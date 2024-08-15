@@ -1,0 +1,58 @@
+<RCC>
+  <qresource prefix="fonts">
+    <file>resources/fonts/Poppins/Poppins-Black.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-BlackItalic.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-Bold.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-BoldItalic.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-ExtraBold.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-ExtraBoldItalic.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-ExtraLight.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-ExtraLightItalic.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-Italic.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-Light.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-LightItalic.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-Medium.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-MediumItalic.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-Regular.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-SemiBold.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-SemiBoldItalic.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-Thin.ttf</file>
+    <file>resources/fonts/Poppins/Poppins-ThinItalic.ttf</file>
+  </qresource>
+  <qresource prefix="addtional_icons">
+    <file>resources/addtional_icons/Add Dark.png</file>
+    <file>resources/addtional_icons/Add Light.png</file>
+    <file>resources/addtional_icons/Alarm Light.png</file>
+    <file>resources/addtional_icons/Dots Dark.png</file>
+    <file>resources/addtional_icons/Dots.png</file>
+    <file>resources/addtional_icons/Plus Dark.png</file>
+    <file>resources/addtional_icons/Plus Light.png</file>
+    <file>resources/addtional_icons/Room.png</file>
+  </qresource>
+  <qresource prefix="accessories_default">
+    <file>resources/accessories/default/Siren Light.png</file>
+    <file>resources/accessories/default/Broken Glass Light.png</file>
+    <file>resources/accessories/default/Closed Door Light.png</file>
+    <file>resources/accessories/default/Door Sensor Light.png</file>
+    <file>resources/accessories/default/Lamp Light.png</file>
+    <file>resources/accessories/default/Motion Sensor Light.png</file>
+    <file>resources/accessories/default/Opened Door Light.png</file>
+    <file>resources/accessories/default/Running Light.png</file>
+    <file>resources/accessories/default/Window Light.png</file>
+  </qresource>
+  <qresource prefix="accessories_active">
+    <file>resources/accessories/active/Siren Primary.png</file>
+    <file>resources/accessories/active/Broken Glass Light.png</file>
+    <file>resources/accessories/active/Closed Door Light.png</file>
+    <file>resources/accessories/active/Door Sensor Light.png</file>
+    <file>resources/accessories/active/Lamp Light.png</file>
+    <file>resources/accessories/active/Motion Sensor Light.png</file>
+    <file>resources/accessories/active/Opened Door Light.png</file>
+    <file>resources/accessories/active/Running Light.png</file>
+    <file>resources/accessories/active/Window Light.png</file>
+  </qresource>
+  <qresource prefix="logo">
+    <file>resources/logo/Home Kit Logo.png</file>
+    <file>resources/logo/Layer_1.png</file>
+  </qresource>
+</RCC>

@@ -1,0 +1,33 @@
+{
+  "Database": {
+      "host": "localhost",
+      "port": 3306,
+      "username": "root",
+      "password": "1234",
+      "database_name": "grafanadb"
+  },
+  "MQTT": {
+    "broker": "localhost",
+    "port": 1883,
+    "keep_alive": 60
+  },
+  "Items": {
+    "Items Status": {
+        "temperature": [],
+        "humidity": [],
+        "motion_sensor": ["Motion Detected", "No Motion"],
+        "door_sensor": ["opened", "closed"],
+        "glass_break": ["broken", "intact"],
+        "switch": ["on", "off"],
+        "siren": ["on", "off"]
+    },
+    "Icon Paths": {
+        "motion_sensor": {"Motion Detected": "Running Light.png", "No Motion": "Running Light.png"},
+        "door_sensor": {"opened": "Opened Door Light", "closed": "Closed Door Light.png"},
+        "glass_break": {"broken": "Broken Glass Light.png", "Normal": "Window Light.png"},
+        "switch": {"on": "Lamp Light.png", "off": "Lamp Light.png"},
+        "siren": {"on": "Siren Primary.png", "off": "Siren Light.png"}
+    }
+  }
+  
+}

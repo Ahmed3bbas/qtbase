@@ -196,7 +196,12 @@ class Window(QMainWindow, Ui_MainWindow):
             self.dialog.close()
 
         self.dialog = AddButtonOptions(self)
-        print(self.x()+ 650, self.y())
+        # print(self.x()+ 650, self.y())
+        parent_geom = self.geometry()
+        dialog_width, dialog_height = 254, 162
+        x_pos = parent_geom.x() + (parent_geom.width() - dialog_width) / 2
+        y_pos = parent_geom.y() + (parent_geom.height() - dialog_height) / 2
+        self.dialog.setGeometry(x_pos, y_pos, dialog_width, dialog_height)
         # self.dialog.setGeometry(650, 0, 254, 162) # - 228 + 58
         # x_pos = self.x() + 650
         # y_pos = self.y()
@@ -213,6 +218,8 @@ class Window(QMainWindow, Ui_MainWindow):
         self.blur_layer.show()
         if GLOBAL_VERBOSE:
             print("BlurredOverlay shown")  # Debug print
+        
+        print(f"Dialog geometry: {self.dialog.geometry()}")
         self.dialog.show()
         # self.dialog.raise_()
         # self.dialog.activateWindow()

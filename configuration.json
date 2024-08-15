@@ -4,7 +4,8 @@
       "port": 3306,
       "username": "root",
       "password": "1234",
-      "database_name": "grafanadb"
+      "database_name": "grafanadb",
+      "unix_socket" : "/var/lib/mysql/mysql.sock"
   },
   "MQTT": {
     "broker": "localhost",

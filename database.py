@@ -15,31 +15,32 @@ port='9999'
 
 
 class Database:
-
-    def __init__(self, host, port, username, password, database_name):
+ 
+    def __init__(self,host,port,username,password,database_name,unix_socket):
         self.host = host
         self.port = port
         self.username = username
         self.password = password
         self.database_name = database_name
         self.connection = None
-
+        self.unix_socket = unix_socket
+ 
     def connect(self):
         try:
             self.connection = mysql.connector.connect(host=self.host,
-                                                      database=self.database_name,
-                                                      user=self.username,
-                                                      password=self.password,
-                                                      port=self.port
-                                                      )
+                                                 database=self.database_name,
+                                                 user=self.username,
+                                                 password=self.password,
+                                                 unix_socket=self.unix_socket
+                                                 )
             if self.connection.is_connected():
                 db_Info = self.connection.get_server_info()
                 #print("Connected to MySQL Server version ", db_Info)
-
-
+ 
+ 
         except Error as e:
             print("Error while connecting to MySQL", e)
-
+ 
     def is_connected(self):
         return self.connection.is_connected()
 
@@ -1123,7 +1124,7 @@ END
 
 def create_database_object():
     obj = Database(database_configuration['host'], database_configuration['port'], database_configuration['username'],
-                   database_configuration['password'], database_configuration['database_name'])  # (host, 3306, "grafana", "pwd123", "grafanadb")
+                   database_configuration['password'], database_configuration['database_name'] ,database_configuration['unix_socket'] )  # (host, 3306, "grafana", "pwd123", "grafanadb")
     obj.connect()
     return obj
 

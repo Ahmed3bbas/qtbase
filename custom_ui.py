@@ -197,7 +197,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
         self.dialog = AddButtonOptions(self)
         print(self.x()+ 650, self.y())
-        self.dialog.setGeometry(self.x()+ 650, self.y(), 254, 162) # - 228 + 58
+        self.dialog.setGeometry(650, 0, 254, 162) # - 228 + 58
         if GLOBAL_VERBOSE:
             print("AddButtonOptions geometry set")  # Debug print
 

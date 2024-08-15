@@ -213,7 +213,6 @@ class Window(QMainWindow, Ui_MainWindow):
         self.blur_layer.show()
         if GLOBAL_VERBOSE:
             print("BlurredOverlay shown")  # Debug print
-
         self.dialog.show()
         self.dialog.raise_()
         self.dialog.activateWindow()

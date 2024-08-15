@@ -423,7 +423,7 @@ class BlurredOverlay(QWidget):
         self.close()  # Close the widget on click
 
 
-class AddButtonOptions(QFrame):
+class AddButtonOptions(QWidget):
     will_you_open_another_dialog = False
 
     def __init__(self, parent=None):

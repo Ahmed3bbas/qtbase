@@ -374,7 +374,8 @@ class BlurredOverlay(QWidget):
         super(BlurredOverlay, self).__init__(parent)
         self.p = parent
         self.setAttribute(Qt.WA_TranslucentBackground)  # Set widget background to be transparent
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool )  # No border and always on top
+        self.setWindowFlags(Qt.FramelessWindowHint  | Qt.Dialog       )  # No border and always on top | Qt.Tool
+        # print(parent.geometry())
         self.setGeometry(parent.geometry())  # Set position and size of the transparent widget
         
         # # Create a QGraphicsScene to apply the blur effect
@@ -430,9 +431,9 @@ class AddButtonOptions(QWidget):
         super().__init__(parent)
         self.setWindowTitle('Options Menu')
         # self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowFlags( Qt.Tool) # Qt.FramelessWindowHint |
-        self.setGeometry(parent.geometry())
-        self.resize(254, 162)
+        self.setWindowFlags(Qt.Popup) # Qt.Tool) # Qt.FramelessWindowHint |
+        # self.setGeometry(parent.geometry())
+        # self.resize(254, 162)
         self.setStyleSheet(Style.ADD_BUTTON_DIALOG_STYLE)
         AddButtonOptions.will_you_open_another_dialog = False
 

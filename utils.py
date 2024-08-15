@@ -374,7 +374,7 @@ class BlurredOverlay(QWidget):
         super(BlurredOverlay, self).__init__(parent)
         self.p = parent
         self.setAttribute(Qt.WA_TranslucentBackground)  # Set widget background to be transparent
-        self.setWindowFlags(Qt.FramelessWindowHint  | Qt.Dialog)  # No border and always on top | Qt.Tool
+        self.setWindowFlags(Qt.FramelessWindowHint  | Qt.Popup)  # No border and always on top | Qt.Tool
         # print(parent.geometry())
         self.setGeometry(parent.geometry())  # Set position and size of the transparent widget
         
@@ -430,10 +430,10 @@ class AddButtonOptions(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle('Options Menu')
-        # self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowFlags(Qt.Popup) # Qt.Tool) # Qt.FramelessWindowHint |
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Popup) # Qt.Tool) #  |
         # self.setGeometry(parent.geometry())
-        # self.resize(254, 162)
+        self.resize(254, 162)
         self.setStyleSheet(Style.ADD_BUTTON_DIALOG_STYLE)
         AddButtonOptions.will_you_open_another_dialog = False
 
@@ -526,8 +526,8 @@ class AddButtonOptions(QWidget):
         painter.setPen(Qt.NoPen)
         painter.drawRoundedRect(self.rect(), 10, 10)  # Radius for x and y
 
-    def show_menu(self, pos):
-        new_pos = QPoint(pos.x(), pos.y())
+    def show_menu(self, xpos, ypos):
+        new_pos = QPoint(xpos, ypos)
         self.move(new_pos)
         self.show()
 

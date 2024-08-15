@@ -194,23 +194,23 @@ class Window(QMainWindow, Ui_MainWindow):
         
         
         # self.dialog.setGeometry(650, 0, 254, 162) # - 228 + 58
-        # x_pos = self.x() + 650
-        # y_pos = self.y()
+        x_pos = self.x() + 700
+        y_pos = self.y() + 50
         # self.dialog.move(x_pos, y_pos)
         # self.dialog.resize(254, 162)
         if self.dialog:
             self.dialog.close()
 
 
-        # if self.blur_layer:
-        #     self.blur_layer.close()
+        if self.blur_layer:
+            self.blur_layer.close()
 
-        # self.blur_layer = BlurredOverlay(self)
-        # # self.blur_layer.setGeometry(self.x(), self.y(), self.width(), self.height())
-        # self.blur_layer.show()
-        # print(f"blur_layer geometry: {self.blur_layer.geometry()}")
-        # if GLOBAL_VERBOSE:
-        #     print("BlurredOverlay shown")  # Debug print
+        self.blur_layer = BlurredOverlay(self)
+        # self.blur_layer.setGeometry(self.x(), self.y(), self.width(), self.height())
+        self.blur_layer.show()
+        print(f"blur_layer geometry: {self.blur_layer.geometry()}")
+        if GLOBAL_VERBOSE:
+            print("BlurredOverlay shown")  # Debug print
         
 
         self.dialog = AddButtonOptions(self)
@@ -224,7 +224,7 @@ class Window(QMainWindow, Ui_MainWindow):
             print("AddButtonOptions geometry set")  # Debug print
 
         # print(f"Dialog geometry: {self.dialog.geometry()}")
-        self.dialog.show_menu(self.rect().topRight())
+        self.dialog.show_menu(x_pos, y_pos)
         # self.dialog.raise_()
         # self.dialog.activateWindow()
         if GLOBAL_VERBOSE:

@@ -225,8 +225,8 @@ class Window(QMainWindow, Ui_MainWindow):
 
         print(f"Dialog geometry: {self.dialog.geometry()}")
         self.dialog.show()
-        self.dialog.raise_()
-        self.dialog.activateWindow()
+        # self.dialog.raise_()
+        # self.dialog.activateWindow()
         if GLOBAL_VERBOSE:
             print("AddButtonOptions shown")  # Debug print  
     

@@ -430,6 +430,8 @@ class AddButtonOptions(QWidget):
         super().__init__(parent)
         self.setWindowTitle('Options Menu')
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
+        self.setGeometry(parent.geometry())
+        self.resize(254, 162)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet(Style.ADD_BUTTON_DIALOG_STYLE)
         AddButtonOptions.will_you_open_another_dialog = False

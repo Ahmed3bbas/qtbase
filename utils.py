@@ -429,8 +429,8 @@ class AddButtonOptions(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle('Options Menu')
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
+        # self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowFlags( Qt.Tool) # Qt.FramelessWindowHint |
         self.setGeometry(parent.geometry())
         self.resize(254, 162)
         self.setStyleSheet(Style.ADD_BUTTON_DIALOG_STYLE)

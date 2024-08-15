@@ -188,15 +188,15 @@ class Window(QMainWindow, Ui_MainWindow):
         return False  # Return False if no update was made
     
     def add_overlay_menu(self):
-        button_position = self.add_button.mapToGlobal(QPoint(0, 0))
-        if GLOBAL_VERBOSE:
-            print(f"Button position: {button_position}")  # Debug print
+        # button_position = self.add_button.mapToGlobal(QPoint(0, 0))
+        # if GLOBAL_VERBOSE:
+        #     print(f"Button position: {button_position}")  # Debug print
         
         if self.dialog:
             self.dialog.close()
 
         self.dialog = AddButtonOptions(self)
-        self.dialog.setGeometry(button_position.x() - 228 , button_position.y() + 58, 254, 162)
+        self.dialog.setGeometry(self.x() + self.dialog.width() + 650, self.y() + self.dialog.height(), 254, 162) # - 228 + 58
         if GLOBAL_VERBOSE:
             print("AddButtonOptions geometry set")  # Debug print
 

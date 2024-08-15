@@ -205,17 +205,17 @@ class Window(QMainWindow, Ui_MainWindow):
         if GLOBAL_VERBOSE:
             print("AddButtonOptions geometry set")  # Debug print
 
-        # if self.blur_layer:
-        #     self.blur_layer.close()
+        if self.blur_layer:
+            self.blur_layer.close()
 
-        # self.blur_layer = BlurredOverlay(self)
-        # # self.blur_layer.setGeometry(self.x(), self.y(), self.width(), self.height())
-        # self.blur_layer.show()
+        self.blur_layer = BlurredOverlay(self)
+        # self.blur_layer.setGeometry(self.x(), self.y(), self.width(), self.height())
+        self.blur_layer.show()
         if GLOBAL_VERBOSE:
             print("BlurredOverlay shown")  # Debug print
         self.dialog.show()
-        self.dialog.raise_()
-        self.dialog.activateWindow()
+        # self.dialog.raise_()
+        # self.dialog.activateWindow()
         if GLOBAL_VERBOSE:
             print("AddButtonOptions shown")  # Debug print  
     

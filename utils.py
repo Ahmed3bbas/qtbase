@@ -678,7 +678,7 @@ class DialogTemplate(QWidget):
 
         self.p = parent
         self.setWindowTitle(title)
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Popup)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet(Style.DIALOG_STYLE)
 

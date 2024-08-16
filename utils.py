@@ -374,8 +374,7 @@ class BlurredOverlay(QWidget):
         super(BlurredOverlay, self).__init__(parent)
         self.p = parent
         self.setAttribute(Qt.WA_TranslucentBackground)  # Set widget background to be transparent
-        self.setWindowFlags(Qt.FramelessWindowHint  | Qt.Popup)  # No border and always on top | Qt.Tool
-        # print(parent.geometry())
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool )  # No border and always on top
         self.setGeometry(parent.geometry())  # Set position and size of the transparent widget
         
         # # Create a QGraphicsScene to apply the blur effect
@@ -424,16 +423,14 @@ class BlurredOverlay(QWidget):
         self.close()  # Close the widget on click
 
 
-class AddButtonOptions(QWidget):
+class AddButtonOptions(QFrame):
     will_you_open_another_dialog = False
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle('Options Menu')
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Popup) # Qt.Tool) #  |
-        # self.setGeometry(parent.geometry())
-        self.resize(254, 162)
         self.setStyleSheet(Style.ADD_BUTTON_DIALOG_STYLE)
         AddButtonOptions.will_you_open_another_dialog = False
 
@@ -525,11 +522,6 @@ class AddButtonOptions(QWidget):
         painter.setBrush(QBrush(QColor(37, 37, 37, 255)))
         painter.setPen(Qt.NoPen)
         painter.drawRoundedRect(self.rect(), 10, 10)  # Radius for x and y
-
-    def show_menu(self, xpos, ypos):
-        new_pos = QPoint(xpos, ypos)
-        self.move(new_pos)
-        self.show()
 
     def add_room(self):
         AddButtonOptions.will_you_open_another_dialog = True
@@ -678,7 +670,7 @@ class DialogTemplate(QWidget):
 
         self.p = parent
         self.setWindowTitle(title)
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Popup)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet(Style.DIALOG_STYLE)
 

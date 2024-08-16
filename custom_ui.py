@@ -188,45 +188,30 @@ class Window(QMainWindow, Ui_MainWindow):
         return False  # Return False if no update was made
     
     def add_overlay_menu(self):
-        # button_position = self.add_button.mapToGlobal(QPoint(0, 0))
-        # if GLOBAL_VERBOSE:
-        #     print(f"Button position: {button_position}")  # Debug print
+        button_position = self.add_button.mapToGlobal(QPoint(0, 0))
+        if GLOBAL_VERBOSE:
+            print(f"Button position: {button_position}")  # Debug print
         
-        
-        # self.dialog.setGeometry(650, 0, 254, 162) # - 228 + 58
-        x_pos = self.x() + 700
-        y_pos = self.y() + 50
-        # self.dialog.move(x_pos, y_pos)
-        # self.dialog.resize(254, 162)
         if self.dialog:
             self.dialog.close()
 
+        self.dialog = AddButtonOptions(self)
+        self.dialog.setGeometry(button_position.x() - 228 , button_position.y() + 58, 254, 162)
+        if GLOBAL_VERBOSE:
+            print("AddButtonOptions geometry set")  # Debug print
 
         if self.blur_layer:
             self.blur_layer.close()
 
         self.blur_layer = BlurredOverlay(self)
-        # self.blur_layer.setGeometry(self.x(), self.y(), self.width(), self.height())
+        self.blur_layer.setGeometry(self.x(), self.y(), self.width(), self.height())
         self.blur_layer.show()
-        print(f"blur_layer geometry: {self.blur_layer.geometry()}")
         if GLOBAL_VERBOSE:
             print("BlurredOverlay shown")  # Debug print
-        
 
-        self.dialog = AddButtonOptions(self)
-        # print(self.x()+ 650, self.y())
-        # parent_geom = self.geometry()
-        # dialog_width, dialog_height = 254, 162
-        # x_pos = int(parent_geom.x() + (parent_geom.width() - dialog_width) / 2)
-        # y_pos = int(parent_geom.y() + (parent_geom.height() - dialog_height) / 2)
-        # self.dialog.setGeometry(x_pos, y_pos, dialog_width, dialog_height)
-        if GLOBAL_VERBOSE:
-            print("AddButtonOptions geometry set")  # Debug print
-
-        # print(f"Dialog geometry: {self.dialog.geometry()}")
-        self.dialog.show_menu(x_pos, y_pos)
-        # self.dialog.raise_()
-        # self.dialog.activateWindow()
+        self.dialog.show()
+        self.dialog.raise_()
+        self.dialog.activateWindow()
         if GLOBAL_VERBOSE:
             print("AddButtonOptions shown")  # Debug print  
     
@@ -257,11 +242,11 @@ class Window(QMainWindow, Ui_MainWindow):
             self.dialog.close()
         
         self.dialog = AddRoomDialog(self)
-        w = int(self.width() - (self.width() * 2 // 3))
-        h = int(self.height() * 1 // 3)
-        x = int(self.x() + ( self.width() - w ) // 2)
+        w = self.width() - (self.width() * 2 // 3)
+        h = self.height() * 1 // 3
+        x = self.x() + ( self.width() - w ) // 2
         keyboard_height = self.height() * 1 // 3
-        y = int(self.y() + ( self.height() - keyboard_height - h ) // 2)
+        y = self.y() + ( self.height() - keyboard_height - h ) // 2 
         self.dialog.setGeometry(x, y, w, h)
         
         if self.blur_layer:
@@ -280,11 +265,11 @@ class Window(QMainWindow, Ui_MainWindow):
             self.dialog.close()
         
         self.dialog = AddAccessoryDialog(self)
-        w = int(self.width() - (self.width() * 2 // 3))
-        h = int(self.height() * 2.3 // 3)
-        x = int(self.x() + ( self.width() - w ) // 2)
+        w = self.width() - (self.width() * 2 // 3)
+        h = self.height() * 2.3 // 3
+        x = self.x() + ( self.width() - w ) // 2
         # keyboard_height = self.height() * 1 // 3
-        y = int(self.y() + 30)  #self.y() + ( self.height() - keyboard_height - h ) // 2 
+        y = self.y() + 30  #self.y() + ( self.height() - keyboard_height - h ) // 2 
         self.dialog.setGeometry(x, y, w, h)
         
         if self.blur_layer:

@@ -242,11 +242,11 @@ class Window(QMainWindow, Ui_MainWindow):
             self.dialog.close()
         
         self.dialog = AddRoomDialog(self)
-        w = self.width() - (self.width() * 2 // 3)
-        h = self.height() * 1 // 3
-        x = self.x() + ( self.width() - w ) // 2
+        w = int(self.width() - (self.width() * 2 // 3))
+        h = int(self.height() * 1 // 3)
+        x = int(self.x() + ( self.width() - w ) // 2)
         keyboard_height = self.height() * 1 // 3
-        y = self.y() + ( self.height() - keyboard_height - h ) // 2 
+        y = int(self.y() + ( self.height() - keyboard_height - h ) // 2) 
         self.dialog.setGeometry(x, y, w, h)
         
         if self.blur_layer:
@@ -265,11 +265,11 @@ class Window(QMainWindow, Ui_MainWindow):
             self.dialog.close()
         
         self.dialog = AddAccessoryDialog(self)
-        w = self.width() - (self.width() * 2 // 3)
-        h = self.height() * 2.3 // 3
-        x = self.x() + ( self.width() - w ) // 2
+        w = int(self.width() - (self.width() * 2 // 3))
+        h = int(self.height() * 2.3 // 3)
+        x = int(self.x() + ( self.width() - w ) // 2)
         # keyboard_height = self.height() * 1 // 3
-        y = self.y() + 30  #self.y() + ( self.height() - keyboard_height - h ) // 2 
+        y = int(self.y() + 30)  #self.y() + ( self.height() - keyboard_height - h ) // 2 
         self.dialog.setGeometry(x, y, w, h)
         
         if self.blur_layer:

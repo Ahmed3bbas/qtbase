@@ -1127,6 +1127,7 @@ def create_database_object():
                    database_configuration['password'], database_configuration['database_name'] ,database_configuration['unix_socket'] )  # (host, 3306, "grafana", "pwd123", "grafanadb")
     obj.connect()
     return obj
+
 def actions_of_acuators_to_list(siren, switch, time):
     list_of_Actions = []
     siren = str(siren).split('],[')

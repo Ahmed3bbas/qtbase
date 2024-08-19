@@ -19,6 +19,7 @@ from globals import exit_event, insertion_event, accessories_configuration, sess
 from utils import helpers, OptionsMenu, BlurredOverlay, AddButtonOptions, AddRoomDialog, AddAccessoryDialog, DeleteAccessoryDialog
 from database import Controller
 import datetime
+from PyQt5.QtWidgets import QScroller
 
 class Window(QMainWindow, Ui_MainWindow):
     update_items_signal = pyqtSignal(str, int, str)
@@ -40,7 +41,8 @@ class Window(QMainWindow, Ui_MainWindow):
 
         super().__init__(parent)
         self.update_items_signal.connect(self.update_status_by_id)
-        self.setupUi(self)     
+        self.setupUi(self)    
+        QScroller.grabGesture(self.scrollArea.viewport(), QScroller.LeftMouseButtonGesture) 
 
         # connect to database
         self.controller = Controller(session=session)

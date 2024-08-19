@@ -5,14 +5,15 @@ from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QBrush, QColor, QKeySeq
 from constants import Style, Layout
 from globals import accessories_configuration, GLOBAL_VERBOSE #self.scrollAreaWidgetContents_1
 from database import Controller
+from functools import partial
 
 class helpers:
     _translate = QCoreApplication.translate
     @staticmethod
-    def add_accessory(main_continer, room_layout: QGridLayout, accessory_type: str, id: int, name: str = None, status: str = None, row: int = 0, column: int = 0):
+    def add_accessory(main_container, room_layout: QGridLayout, accessory_type: str, id: int, name: str = None, status: str = None, row: int = 0, column: int = 0):
         # Validate parameters
-        # if not isinstance(main_continer, QWidget):
-        #     raise TypeError("main_continer must be an instance of QWidget")
+        # if not isinstance(main_container, QWidget):
+        #     raise TypeError("main_container must be an instance of QWidget")
         if not isinstance(room_layout, QGridLayout):
             raise TypeError("room_layout must be an instance of QGridLayout")
         if not isinstance(accessory_type, str):
@@ -37,7 +38,7 @@ class helpers:
                 return None
             id_str = str(id)
             type_str = str(accessory_type)
-            accessory_group_box = QGroupBox(main_continer.container)
+            accessory_group_box = QGroupBox(main_container.container)
             accessory_group_box.setMinimumSize(QSize(180, 180))
             accessory_group_box.setMaximumSize(QSize(180, 180))
             accessory_group_box.setContentsMargins(0, 0, 0, 0)
@@ -85,7 +86,11 @@ class helpers:
             accessory_icon.setIconSize(QSize(48, 48))
             accessory_icon.setToolButtonStyle(Qt.ToolButtonIconOnly)
             accessory_icon.setObjectName("accessory_icon_" + type_str + "_" + id_str)
-            accessory_icon.clicked.connect(main_continer.accessory_toggle_handler)
+            # accessory_icon.clicked.connect(main_container.accessory_toggle_handler)
+            # Connect the accessory_icon's clicked signal to the handler
+            accessory_icon.clicked.connect(partial(main_container.accessory_toggle_handler, accessory_icon))
+            accessory_group_box.mousePressEvent = lambda event, obj=accessory_group_box: main_container.accessory_toggle_handler(obj)
+
 
             # Accessory Options Button
             accessory_options = QToolButton(accessory_group_box)
@@ -100,7 +105,7 @@ class helpers:
             accessory_options.setIcon(icon3)
             accessory_options.setIconSize(QSize(32, 32))
             accessory_options.setObjectName("accessory_options_" + type_str + "_" + id_str)
-            accessory_options.clicked.connect(main_continer.accessory_option_handler)
+            accessory_options.clicked.connect(main_container.accessory_option_handler)
 
             # Set text for the icons
             accessory_icon.setText(_translate("MainWindow", "..."))

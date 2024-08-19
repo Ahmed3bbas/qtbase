@@ -117,10 +117,12 @@ class Window(QMainWindow, Ui_MainWindow):
                 helpers.accessory_update_status(gb_bx, type, id, status, CALLBACK=self.update_accessory_data_in_session)
         return None
 
-    def accessory_toggle_handler(self):
-        button = self.sender()
+    def accessory_toggle_handler(self, clicked_object):
+        # clicked_obj = self.sender()
+        if isinstance(clicked_object, QtWidgets.QToolButton):
+            clicked_object = clicked_object.parent()
 
-        type, id = helpers.get_type_and_id_of_accessory(button.parent())
+        type, id = helpers.get_type_and_id_of_accessory(clicked_object) # clicked_obj.parent()
         if type in self.acuators:
             accessory_all_data = helpers.find_accessory_data(self.rooms_data, type, id)
             room_data, accessory_data = accessory_all_data.get("room_data", None), accessory_all_data.get("accessory_data", None)
@@ -135,7 +137,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 return None # stop wrong status
 
             # update GUI and the CALLBACK for update the current copy of data's database
-            helpers.accessory_update_status(button.parent(), type, id, new_staus, CALLBACK=self.update_accessory_data_in_session)
+            helpers.accessory_update_status(clicked_object, type, id, new_staus, CALLBACK=self.update_accessory_data_in_session)
             if self.handler:
                 self.handler(type, id, new_staus)
             else:

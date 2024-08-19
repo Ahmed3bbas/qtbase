@@ -1084,24 +1084,12 @@ class CustomComboBox(QComboBox):
                 padding-left: 15px;
                 margin: 0px;
             }
-            QListView::item:hover {
-                background: none;  /* Removes the hover background */
-                border: none;      /* Removes any border on hover */
-                outline: none; 
-            }
+
             QListView::item:selected {
                 background: none;  /* Removes the selection background */
                 border: none;      /* Removes any border on selection */
             }
-            QListView::item:focus { 
-                outline: none; 
-            }
-            QComboBox:focus {
-                outline: none; /* Ensure it's not shown on focus */
-                }
-            QComboBox QAbstractItemView {
-                outline: none; /* Remove the border from the dropdown list */
-            }
+            
         """)
         self.view().setFocusPolicy(Qt.NoFocus)
         self.setStyleSheet(Style.DIALOG_COMBO)

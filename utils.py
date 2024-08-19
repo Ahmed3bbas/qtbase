@@ -280,6 +280,13 @@ class OptionsMenu(QWidget):
                                             border: none;
                                             background-color: #262626;
                                        }
+                                        QPushButton 
+                                        {
+                                        outline: none; /* Remove the dashed border */
+                                        }
+                                        QPushButton:focus {
+                                            outline: none; /* Ensure it's not shown on focus */
+                                       }
                                        """)
     
         layout = QVBoxLayout(self.main_widget)
@@ -1084,12 +1091,25 @@ class CustomComboBox(QComboBox):
                 padding-left: 15px;
                 margin: 0px;
             }
-
             QListView::item:selected {
                 background: none;  /* Removes the selection background */
                 border: none;      /* Removes any border on selection */
+                outline: none; 
             }
-            
+            QListView::item:focus { 
+                outline: none; 
+            }
+            QComboBox:focus {
+                outline: none; /* Ensure it's not shown on focus */
+            }
+            QComboBox QAbstractItemView {
+                outline: none; /* Remove the border from the dropdown list */
+            }
+            QListView::item:hover {
+                background: none;  /* Removes the hover background */
+                border: none;      /* Removes any border on hover */
+                outline: none; 
+            }
         """)
         self.view().setFocusPolicy(Qt.NoFocus)
         self.setStyleSheet(Style.DIALOG_COMBO)

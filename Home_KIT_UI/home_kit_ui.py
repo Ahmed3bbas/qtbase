@@ -23,26 +23,12 @@ class Ui_MainWindow(object):
         MainWindow.setStyleSheet("""font-family: Poppins; 
                                  QPushButton 
                                 {
-                                outline: none; /* Remove the dashed border */
+                                        outline: none; /* Remove the dashed border */
                                 }
                                 QPushButton:focus {
-                                outline: none; /* Ensure it's not shown on focus */
-                                 
+                                         outline: none; /* Ensure it's not shown on focus */
                                 }
-                                QListView::item:focus { 
-                                        outline: none; 
-                                }
-                                QComboBox:focus {
-                                        outline: none; /* Ensure it's not shown on focus */
-                                        }
-                                QComboBox QAbstractItemView {
-                                        outline: none; /* Remove the border from the dropdown list */
-                                }
-                                QListView::item:hover {
-                                        background: none;  /* Removes the hover background */
-                                        border: none;      /* Removes any border on hover */
-                                        outline: none; 
-                                }
+                                
 """)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setMaximumSize(QtCore.QSize(16777215, 16777215))

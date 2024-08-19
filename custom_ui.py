@@ -6,7 +6,7 @@
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
-    QMainWindow, QShortcut, QStackedWidget, QPushButton, QMenu, QAction, QVBoxLayout, QScrollArea, QGraphicsBlurEffect, QWidget, QLabel, QLineEdit, QGridLayout, QHBoxLayout
+    QMainWindow, QShortcut, QStackedWidget, QPushButton, QMenu, QAction, QVBoxLayout, QScrollArea, QGraphicsBlurEffect, QWidget, QLabel, QLineEdit, QGridLayout, QHBoxLayout, QDialog
 )
 from PyQt5 import QtGui
 from PyQt5.QtGui import QKeySequence, QPainter, QBrush, QColor
@@ -15,9 +15,10 @@ from Home_KIT_UI.home_kit_ui import Ui_MainWindow
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtCore import pyqtSignal, QObject, Qt, QPoint
 from constants import *
-from globals import exit_event, insertion_event, items_configuration, session, GLOBAL_VERBOSE, SHOW_ID_WITH_NAME
-from utils import helpers, OptionsMenu, BlurredOverlay, AddButtonOptions, AddRoomDialog, AddAccessoryDialog
+from globals import exit_event, insertion_event, accessories_configuration, session, GLOBAL_VERBOSE, SHOW_ID_WITH_NAME, sensor_types
+from utils import helpers, OptionsMenu, BlurredOverlay, AddButtonOptions, AddRoomDialog, AddAccessoryDialog, DeleteAccessoryDialog
 from database import Controller
+import datetime
 
 class Window(QMainWindow, Ui_MainWindow):
     update_items_signal = pyqtSignal(str, int, str)
@@ -43,27 +44,13 @@ class Window(QMainWindow, Ui_MainWindow):
 
         # connect to database
         self.controller = Controller(session=session)
-        # print(self.controller.general_insert(1, 2,"living room", [{
-        #     "id": 11,
-        #     "type": "siren",
-        #     "status":"off",
-        #     "name": "back siren",
-        #     "cp": "LoRa"
-        # }]))
+        
         data = self.controller.start()
         self.rooms_data = data["rooms_data"]
+        # print(self.rooms_data)
         self.create_dashboard()
         # # self.actions = data['actions']
         # self.items_data = data['items_data']
-
-
-        # Add Accessory 
-        # helpers.add_accessory(self, self.gridLayout, "door_sensor", 10, "UNKOWN", "closed", 5, 3)
-        # helpers.add_accessory(self, self.gridLayout, "switch", 11, "UNKOWN", "off", 5, 3)
-        # helpers.add_accessory(self, self.gridLayout, "door_sensor", 11, "UNKOWN", "opened", 5, 3)
-        # helpers.add_accessory(self, self.gridLayout, "motion_sensor", 11, "UNKOWN", "No Motion", 5, 3)
-        # # self.add_accessory(self.gridLayout, "door_sensor", 10, "UNKOWN", "closed", 5, 3)
-        # self.add_accessory(self.gridLayout, "door_sensor", 11, "UNKOWN", "opened", 5, 3)
         
 
         # Set icon, name of the applicaiton, and set the shortcuts
@@ -73,30 +60,13 @@ class Window(QMainWindow, Ui_MainWindow):
     
       
     def create_dashboard(self):
-        _translate = QtCore.QCoreApplication.translate
 
         for room in self.rooms_data:
-            room_data = room.get("dashboard", None)
-            room_id = room_data.get('dashboard_id')
-            room_text = room_data.get("dashboard_name", "unkown room name")
+            room_data = room.get("room_data", None)
+            room_id = room_data.get('room_id')
+            room_text = room_data.get("room_name", "unkown room name")
 
-            ## Label
-            room_name = QtWidgets.QLabel(self.container)
-            room_name.setEnabled(True)
-            room_name.setLayoutDirection(QtCore.Qt.LeftToRight)
-            room_name.setStyleSheet(Style.ROOM_NAME)
-            # {'dashboard_id': 1, 'dashboard_name': 'home', 'user_id': 1, 'user_name': 'admin'}
-            room_name.setObjectName("room_name_" + str(room_id))
-            room_name.setText(_translate("MainWindow", room_text))
-            self.verticalLayout_2.addWidget(room_name)
-
-            ## Grid Container
-            gridLayout = QtWidgets.QGridLayout()
-
-            gridLayout.setSizeConstraint(QtWidgets.QLayout.SetDefaultConstraint)
-            gridLayout.setSpacing(16)
-            gridLayout.setObjectName("gridLayout_" + str(room_id))
-            self.verticalLayout_2.addLayout(gridLayout)
+            helpers.add_room(self, room_id, room_text)
 
             # Room Accessories
             accessories_data = room.get("accessories_data", None)
@@ -120,9 +90,12 @@ class Window(QMainWindow, Ui_MainWindow):
             type = item['type']
             id = item['id']
             status = item["status"]
+            name   = item.get("name", "UNKOWN")
+            name   = name if name else "UNKOWN"
             try: 
                 room_container = self.findChild(QGridLayout, "gridLayout_" + str(room_id))
-                helpers.add_accessory(self, room_container, type, id, "UNKOWN" if not SHOW_ID_WITH_NAME else "UNKOWN" + str(id), status, row, col)
+                # print(item)
+                helpers.add_accessory(self, room_container, type, id, name if not SHOW_ID_WITH_NAME else name + str(id), status, row, col)
             except Exception as e:
                 print(f"type: {type} id: {id} pos: {pos} error: {e}")
 
@@ -139,7 +112,7 @@ class Window(QMainWindow, Ui_MainWindow):
             accessory_status = gb_bx.findChild(QLabel, "accessory_status_" + type + "_" + id_str)
             # the status is the same of the current status
             if accessory_status.text() != status:
-                helpers.accessory_update_status(gb_bx, type, id, status, CALLBACK=self.update_data_for_accessory)
+                helpers.accessory_update_status(gb_bx, type, id, status, CALLBACK=self.update_accessory_data_in_session)
         return None
 
     def accessory_toggle_handler(self):
@@ -160,7 +133,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 return None # stop wrong status
 
             # update GUI and the CALLBACK for update the current copy of data's database
-            helpers.accessory_update_status(button.parent(), type, id, new_staus, CALLBACK=self.update_data_for_accessory)
+            helpers.accessory_update_status(button.parent(), type, id, new_staus, CALLBACK=self.update_accessory_data_in_session)
             if self.handler:
                 self.handler(type, id, new_staus)
             else:
@@ -171,7 +144,7 @@ class Window(QMainWindow, Ui_MainWindow):
             if GLOBAL_VERBOSE:
                 print("[Warning]: This is not an acuator item")
 
-    def update_data_for_accessory(self, type, id, new_status, VERBOSE = GLOBAL_VERBOSE):
+    def update_accessory_data_in_session(self, type, id, new_status, VERBOSE = GLOBAL_VERBOSE):
         for room in self.rooms_data:
             accessories_data = room.get("accessories_data", None) 
 
@@ -186,6 +159,28 @@ class Window(QMainWindow, Ui_MainWindow):
                             print(f"Updated {type} with ID {id} to new status: {new_status}")
                         return True  # Return True if update is successful
         return False  # Return False if no update was made
+    
+    def add_accessory_to_room_in_session(self, room_id, accessory_type, name, accessory_id, status, position):
+        # New accessory data to add
+        new_accessory = {
+            'type': accessory_type,
+            'id': accessory_id,
+            'name': name,
+            'status': status,
+            'date_time': datetime.datetime.now(),
+            'position': position
+        }
+
+        # Iterate over rooms to find the correct room by room_id
+        for room in self.rooms_data:
+            room_data = room.get('room_data', {})
+            if room_data.get('room_id') == room_id:
+                # Append the new accessory to the accessories_data list
+                room.setdefault('accessories_data', []).append(new_accessory)
+                break
+        else:
+            # Room ID not found, you can handle this case as needed
+            print(f"Room ID {room_id} not found in rooms_data.")
     
     def add_overlay_menu(self):
         button_position = self.add_button.mapToGlobal(QPoint(0, 0))
@@ -210,8 +205,8 @@ class Window(QMainWindow, Ui_MainWindow):
             print("BlurredOverlay shown")  # Debug print
 
         self.dialog.show()
-        self.dialog.raise_()
-        self.dialog.activateWindow()
+        # self.dialog.raise_()
+        # self.dialog.activateWindow()
         if GLOBAL_VERBOSE:
             print("AddButtonOptions shown")  # Debug print  
     
@@ -229,14 +224,25 @@ class Window(QMainWindow, Ui_MainWindow):
         menu.show_menu(pos)
 
     def edit_widget(self, widget):
+        # TODO
         print("Edit widget")
 
     def delete_widget(self, widget):
-        widget.setParent(None)  # Remove widget from layout and delete it
-        widget.deleteLater()
-        self.populate_grid() # Rearrange items
-        print("Widget deleted")
-    
+        dialog = DeleteAccessoryDialog()
+        if dialog.exec_() == QDialog.Accepted:
+            # Update the dashboard
+            widget.setParent(None)  # Remove widget from layout and delete it
+            widget.deleteLater()
+            self.populate_grid() # Rearrange items
+
+            # update the database
+
+            # Update session
+
+            # clode Dialog
+            dialog.close()
+
+        
     def open_add_room_dialog(self):
         if self.dialog:
             self.dialog.close()
@@ -249,22 +255,37 @@ class Window(QMainWindow, Ui_MainWindow):
         y = int(self.y() + ( self.height() - keyboard_height - h ) // 2) 
         self.dialog.setGeometry(x, y, w, h)
         
-        if self.blur_layer:
-            self.blur_layer.close()
+        # if self.blur_layer:
+        #     self.blur_layer.close()
 
-        self.blur_layer = BlurredOverlay(self)
-        self.blur_layer.setGeometry(self.x(), self.y(), self.width(), self.height())
-        self.blur_layer.show()
+        # self.blur_layer = BlurredOverlay(self)
+        # self.blur_layer.setGeometry(self.x(), self.y(), self.width(), self.height())
+        # self.blur_layer.show()
 
         self.dialog.show()
         self.dialog.raise_()
         self.dialog.activateWindow()
 
     def open_add_accessory_dialog(self):
+        rooms_info = []
+        accessory_ids = []
+       
+        for room in self.rooms_data:
+            room_data = room['room_data']
+            room_id = room_data['room_id']
+            room_name = room_data['room_name']
+            rooms_info.append((room_id, room_name))
+
+            accessories = room.get('accessories_data', [])
+            for accessory in accessories:
+                accessory_id = accessory.get('id')
+                if accessory_id is not None:
+                    accessory_ids.append(accessory_id)
+
         if self.dialog:
             self.dialog.close()
         
-        self.dialog = AddAccessoryDialog(self)
+        self.dialog = AddAccessoryDialog(self, accessory_ids, rooms_info = rooms_info, accessories_types = sensor_types)
         w = int(self.width() - (self.width() * 2 // 3))
         h = int(self.height() * 2.3 // 3)
         x = int(self.x() + ( self.width() - w ) // 2)
@@ -272,16 +293,16 @@ class Window(QMainWindow, Ui_MainWindow):
         y = int(self.y() + 30)  #self.y() + ( self.height() - keyboard_height - h ) // 2 
         self.dialog.setGeometry(x, y, w, h)
         
-        if self.blur_layer:
-            self.blur_layer.close()
+        # if self.blur_layer:
+        #     self.blur_layer.close()
 
-        self.blur_layer = BlurredOverlay(self)
-        self.blur_layer.setGeometry(self.x(), self.y(), self.width(), self.height())
-        self.blur_layer.show()
+        # self.blur_layer = BlurredOverlay(self)
+        # self.blur_layer.setGeometry(self.x(), self.y(), self.width(), self.height())
+        # self.blur_layer.show()
 
         self.dialog.show()
-        self.dialog.raise_()
-        self.dialog.activateWindow()
+        # self.dialog.raise_()
+        # self.dialog.activateWindow()
 
     def on_resize(self, event):
         self.populate_grid()
@@ -294,6 +315,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
             # 1- Get Items in the layout
             items = self.get_grid_elements(layout)
+            # print(layout, items)
 
             # 2- Clear the layout from any item
             self.clear_grid_layout(layout)
@@ -303,6 +325,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 row = i // cols
                 col = i % cols
                 layout.addWidget(element, row, col)
+                # print(layout.objectName(), row, col, element.objectName())
 
     def calculate_columns(self):
         # Adjust the number of columns based on the window width
@@ -315,11 +338,11 @@ class Window(QMainWindow, Ui_MainWindow):
         rows = range(layout.rowCount())
         cols = range(layout.columnCount())
         elements = []
-        c = 0
+        # c = 0
         for row in rows:
             # Iterate through each column in the current row
             for col in cols: 
-                c += 1           
+                # c += 1           
                 item = layout.itemAtPosition(row, col)
                 if item is not None:
                     widget = item.widget()

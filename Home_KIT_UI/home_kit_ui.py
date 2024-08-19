@@ -20,8 +20,15 @@ class Ui_MainWindow(object):
         font = QtGui.QFont()
         font.setFamily("Poppins")
         MainWindow.setFont(font)
-        MainWindow.setStyleSheet("font-family: Poppins;\n"
-"")
+        MainWindow.setStyleSheet("""font-family: Poppins; 
+                                 QPushButton 
+        {
+            outline: none; /* Remove the dashed border */
+        }
+        QPushButton:focus {
+            outline: none; /* Ensure it's not shown on focus */
+        }
+""")
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.centralwidget.setStyleSheet("")

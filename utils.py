@@ -1,11 +1,13 @@
-from PyQt5.QtWidgets import QFrame, QGridLayout, QGroupBox, QLabel, QToolButton, QWidget, QShortcut, QApplication, QGraphicsScene, QGraphicsPixmapItem, QGraphicsView
-from PyQt5.QtWidgets import QPushButton, QHBoxLayout, QVBoxLayout, QLabel, QScrollArea, QPushButton, QGraphicsBlurEffect, QLineEdit, QComboBox, QListView
-from PyQt5.QtCore import QSize, QRect, Qt, QCoreApplication,  pyqtSignal, Qt
-from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QBrush, QColor, QKeySequence
+from PyQt5.QtWidgets import QFrame, QGridLayout, QGroupBox, QLabel, QToolButton, QWidget, QShortcut, QApplication, QGraphicsScene, QGraphicsPixmapItem, QGraphicsView, QDialog
+from PyQt5.QtWidgets import QPushButton, QHBoxLayout, QVBoxLayout, QLabel, QScrollArea, QPushButton, QGraphicsBlurEffect, QLineEdit, QComboBox, QListView, QStyledItemDelegate, QLayout
+from PyQt5.QtCore import QSize, QRect, Qt, QCoreApplication,  pyqtSignal, QPoint, QRectF, QEvent
+from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QBrush, QColor, QKeySequence, QRegion, QPainterPath
 from constants import Style, Layout
-from globals import items_configuration, GLOBAL_VERBOSE #self.scrollAreaWidgetContents_1
+from globals import accessories_configuration, GLOBAL_VERBOSE #self.scrollAreaWidgetContents_1
+from database import Controller
 
 class helpers:
+    _translate = QCoreApplication.translate
     @staticmethod
     def add_accessory(main_continer, room_layout: QGridLayout, accessory_type: str, id: int, name: str = None, status: str = None, row: int = 0, column: int = 0):
         # Validate parameters
@@ -26,7 +28,7 @@ class helpers:
         if not isinstance(column, int) or column < 0:
             raise TypeError("column must be a positve integer")
 
-        if accessory_type and accessory_type in list(items_configuration["Items Status"].keys()):
+        if accessory_type and accessory_type in list(accessories_configuration["Items Status"].keys()):
             _translate = QCoreApplication.translate
             is_active = helpers.is_active(accessory_type, status)
             if is_active is None:
@@ -107,8 +109,14 @@ class helpers:
             # Fill Accessory data
             accessory_name.setText(_translate("MainWindow", name))
             accessory_status.setText(_translate("MainWindow", status))
-
+            
+            position = room_layout.count()
+            if row == 0 and column == 0:
+                column  = position %   Layout.MAX_COLS
+                row     = position //  Layout.MAX_COLS
             room_layout.addWidget(accessory_group_box, row, column, 1, 1)
+            return position
+
     
     # @staticmethod
     # def find_accessory_items(gb_obj):
@@ -204,11 +212,11 @@ class helpers:
         else:
             common_path = ":/accessories_default/resources/accessories/default/"
         
-        if type not in items_configuration["Items Status"]:
+        if type not in accessories_configuration["Items Status"]:
             return None
 
-        status_list = items_configuration["Items Status"][type]
-        icon_paths = items_configuration["Icon Paths"].get(type, {})
+        status_list = accessories_configuration["Items Status"][type]
+        icon_paths = accessories_configuration["Icon Paths"].get(type, {})
 
         if status in status_list:
             item = icon_paths.get(status, None)
@@ -219,10 +227,10 @@ class helpers:
     
     @staticmethod
     def is_active(type, status):
-        if type not in items_configuration["Items Status"]:
+        if type not in accessories_configuration["Items Status"]:
             return None
 
-        status_list = items_configuration["Items Status"][type]
+        status_list = accessories_configuration["Items Status"][type]
 
         if status in status_list:
             index = status_list.index(status)
@@ -232,9 +240,29 @@ class helpers:
                 return False
 
         return None
+    
+    @staticmethod
+    def add_room(parent, room_id, room_name_text):
+        
+                
+        ## Label
+        room_name = QLabel(parent.container)
+        room_name.setEnabled(True)
+        room_name.setLayoutDirection(Qt.LeftToRight)
+        room_name.setStyleSheet(Style.ROOM_NAME)
+        room_name.setObjectName("room_name_" + str(room_id))
+        room_name.setText(helpers._translate("MainWindow", room_name_text))
+        parent.verticalLayout_2.addWidget(room_name)
 
-from PyQt5.QtCore import QPoint, QRectF
-from PyQt5.QtGui import QRegion, QPainterPath
+        ## Grid Container
+        gridLayout = QGridLayout()
+
+        gridLayout.setSizeConstraint(QLayout.SetDefaultConstraint)
+        gridLayout.setSpacing(16)
+        gridLayout.setObjectName("gridLayout_" + str(room_id))
+        parent.verticalLayout_2.addLayout(gridLayout)
+
+
 class OptionsMenu(QWidget):
     def __init__(self, parent=None, accessory_source = None):
         super().__init__(parent)
@@ -428,7 +456,6 @@ class AddButtonOptions(QFrame):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle('Options Menu')
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet(Style.ADD_BUTTON_DIALOG_STYLE)
@@ -570,6 +597,9 @@ class VirtualKeyboard(QWidget):
         self.caps_lock_on = False
         self.is_lower = False
         self.init_ui()
+        # dialog = [w for w in QApplication.instance().topLevelWidgets() if isinstance(w, DialogTemplate)][0]
+        # if dialog:
+        #     dialog.focusChanged.connect(self.on_focus_changed)
         QApplication.instance().focusChanged.connect(self.on_focus_changed)
 
     def init_ui(self):
@@ -590,6 +620,7 @@ class VirtualKeyboard(QWidget):
                 rowspan, colspan = button[4], button[5]
             btn = QPushButton(text)
             btn.setObjectName(text)
+            # btn.setFocusPolicy(Qt.NoFocus)  # Disable focus policy (no dashed border)
             btn.clicked.connect(self.on_button_click)
             if role == 'number':
                 btn.setStyleSheet(Style.KEYBOARD_BUTTON_STYLE_NUMBER)
@@ -662,7 +693,7 @@ class VirtualKeyboard(QWidget):
             self.hide()
 
 
-class DialogTemplate(QWidget):
+class DialogTemplate(QFrame):
     keyboard = None
 
     def __init__(self, parent=None, title='Dialog'):
@@ -694,7 +725,7 @@ class DialogTemplate(QWidget):
         # init keyboard
         DialogTemplate.keyboard = VirtualKeyboard()  # Instantiate the virtual keyboard
         keyboard_height = self.p.height() // 3
-        DialogTemplate.keyboard.setGeometry(self.p.x(), self.p.y() + self.p.height() - keyboard_height, self.p.width(), keyboard_height)
+        DialogTemplate.keyboard.setGeometry(self.p.x(), self.p.y() + self.p.height() - keyboard_height - Layout.TKINTER_KEYBOARD_Y_SHIFT, self.p.width(), keyboard_height)
 
         self.layout = QVBoxLayout()
         self.layout.setContentsMargins(10, 10, 10, 10)
@@ -802,14 +833,40 @@ class AddRoomDialog(DialogTemplate):
         self.connect_focus_events(self.findChildren(FocusableLineEdit))  # Connect focus events for input fields
 
     def submit(self):
-        print(f"Room name 1 : {self.name_entry.text()}")
+        # print(f"Room name 1 : {}")
+        room_name_text = self.name_entry.text()
+        rooms_data = Controller.session.get("rooms_data")
+        is_room_exist = False # This Flag will check if the name exist in the database or not
+        ids = []
+        if rooms_data:
+            for room_data in rooms_data:
+                room = room_data["room_data"]
+                ids.append(room["room_id"])
+                if room["room_name"] == room_name_text:
+                    is_room_exist = True
+        
+            room_id = max(max(ids) if len(ids) else 0, 0) + 1 # if the ids list is empty the room_id will be one otherwise the id will +1 maxiumum value of id
+
+            if not is_room_exist:
+                # Update the Database
+                # Controller.general_insert(room_id, room_name_text)
+
+                # Update the current session
+                rooms_data.append({'room_data': {'room_id': room_id, 
+                                                 'room_name': room_name_text, 
+                                                 'user_id': Controller.session.get("user_id"), 
+                                                 'user_name': Controller.session.get("username")}, 
+                                   'accessories_data': []})
+                # print(rooms_data) 
+
+                # Update the GUI with the new Room
+                helpers.add_room(self.parent(), room_id, room_name_text)
+            else:
+                print("Room existed...")
+        
+        # After finish close the dialog
         self.close()
 
-from PyQt5.QtWidgets import QLabel, QComboBox, QVBoxLayout, QFrame, QLineEdit, QStyleOptionComboBox, QStyle
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QSize, Qt, QEvent
-from PyQt5.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem
-from PyQt5.QtGui import QPainter
 
 class CustomDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
@@ -826,16 +883,18 @@ class CustomDelegate(QStyledItemDelegate):
         size.setHeight(size.height() + 2)  # Increase the height to add space
         return size
 
-
+import re
+from PyQt5.QtWidgets import QMessageBox
 class AddAccessoryDialog(DialogTemplate):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, accessory_ids = [],  rooms_info = [], accessories_types = []):
         super().__init__(parent, title='Add Accessory')
+        self.ids = accessory_ids
 
         accessory_type_label = QLabel('Accessory Type')
-        self.accessory_type_combo = self.create_custom_combo_box(["Type 1", "Type 2", "Type 3"], "Select")
+        self.accessory_type_combo = self.create_custom_combo_box(accessories_types, "Select an Accessory")
 
         room_label = QLabel('Room')
-        self.room_combo = self.create_custom_combo_box(["Room 1", "Room 2", "Room 3"], "Select Room")
+        self.room_combo = self.create_custom_combo_box(rooms_info, "Select a Room")
 
         name_label = QLabel('Name')
         self.name_entry = FocusableLineEdit()
@@ -846,7 +905,7 @@ class AddAccessoryDialog(DialogTemplate):
         self.id_entry.setPlaceholderText("Enter accessory ID")
 
         cp_label = QLabel('Communication Protocol')
-        self.cp_combo = self.create_custom_combo_box(["Protocol 1", "Protocol 2", "Protocol 3", "Protocol 1", "Protocol 2", "Protocol 3"], "Select Protocol")
+        self.cp_combo = self.create_custom_combo_box(["LoRa", "WiFi", "BLE"], "Select Protocol")
 
         form_container = QFrame()
         form_layout = QVBoxLayout(form_container)
@@ -877,10 +936,18 @@ class AddAccessoryDialog(DialogTemplate):
         self.scroll_layout.addWidget(form_container)
 
         self.postloads()
+        
 
     def create_custom_combo_box(self, items, placeholder):
         combo = CustomComboBox()
-        combo.addItems(items)
+        if items and len(items):
+            if isinstance(items[0], tuple):
+                # Adding items to the combo box along with their associated IDs
+                for room_id, room_name in items:
+                    combo.addItem(room_name, room_id)
+                combo.item_data = {name: id_ for id_, name in items}
+            else:
+                combo.addItems(items)
         combo.setCurrentIndex(-1) # it shoud be here (before placehlder to show the placeholder correctly)
         combo.setPlaceholderText(placeholder)
         combo.setStyleSheet(Style.DIALOG_COMBO)
@@ -896,13 +963,93 @@ class AddAccessoryDialog(DialogTemplate):
             self.save_button.clicked.connect(self.submit)
 
         self.connect_focus_events(self.findChildren(FocusableLineEdit))
+        self.name_entry.setFocus()
+        # self.accessory_type_combo.setFocus()
 
     def submit(self):
-        print(f"Accessory Type: {self.accessory_type_combo.currentText()}")
-        print(f"Room: {self.room_combo.currentText()}")
-        print(f"Name: {self.name_entry.text()}")
-        print(f"ID: {self.id_entry.text()}")
-        print(f"Communication Protocol: {self.cp_combo.currentText()}")
+        accessory_type = self.accessory_type_combo.currentText()
+        room_name = self.room_combo.currentText()
+        room_id = self.room_combo.item_data.get(room_name, None)
+        name = self.name_entry.text().strip()
+        accessory_id = self.id_entry.text().strip()
+        communication_protocol = self.cp_combo.currentText()
+
+        # Validation checks
+
+        # Validation for the Accessory Type
+        if not accessory_type or accessory_type == self.accessory_type_combo.placeholderText():
+            QMessageBox.warning(self, "Invalid Accessory Type", "Please select a valid accessory type.")
+            return
+        
+        # Validation for the Room
+        if not room_name or room_id is None:
+            QMessageBox.warning(self, "Invalid Room", "Please select a valid room.")
+            return
+
+        # Validation for the name
+        if not name:
+            QMessageBox.warning(self, "Invalid Name", "Please enter a valid name for the accessory.")
+            return
+        if re.match(r'^\d', name):
+            QMessageBox.warning(self, "Invalid Name", "The name cannot start with a number.")
+            return
+        if re.search(r'[^a-zA-Z0-9_]', name):
+            QMessageBox.warning(self, "Invalid Name", "The name cannot contain special characters.")
+            return
+
+        # Validation for the ID
+        if not accessory_id:
+            QMessageBox.warning(self, "Invalid ID", "Please enter a valid accessory ID.")
+            return
+        if not accessory_id.isdigit():
+            QMessageBox.warning(self, "Invalid ID", "The ID must be a number.")
+            return
+        if int(accessory_id) in self.ids:
+            QMessageBox.warning(self, "Duplicate ID", "This ID already exists, try again with another ID.")
+            return
+        
+        # Validation for the Communication Protocol
+        if not communication_protocol or communication_protocol == self.cp_combo.placeholderText():
+            QMessageBox.warning(self,"Invalid Communication Protocol", "Please select a communication protocol.")
+            return
+
+        # If all checks pass, proceed
+        if GLOBAL_VERBOSE:
+            print(f"Accessory Type: {accessory_type}")
+            print(f"Room Name: {room_name}, ID: {room_id}")
+            print(f"Name: {name}")
+            print(f"ID: {accessory_id}")
+            print(f"Communication Protocol: {communication_protocol}")
+
+        if accessory_type not in accessories_configuration["Items Status"]:
+            QMessageBox.warning(self,"Configuration File", "Please fill the configuration file with this accessory.")
+            return None
+        if len( accessories_configuration["Items Status"][accessory_type]) <= 1:
+            QMessageBox.warning(self,"Configuration File", "Please fill the configuration file with status for this accessory.")
+            return None
+        
+        defalut_status = accessories_configuration["Items Status"][accessory_type][1]
+        accessory_id        = int(accessory_id)
+        
+        # Update Dashboard
+        room_container = self.parent().findChild(QGridLayout, "gridLayout_" + str(room_id))
+        position = helpers.add_accessory(self.parent(), room_container, accessory_type, accessory_id, name, defalut_status)
+
+        # Update the session
+        self.parent().add_accessory_to_room_in_session(room_id, accessory_type, name, accessory_id, defalut_status, position)  # position should converted to str to be the same of database data type
+        # print(self.parent().rooms_data)
+        
+        # Insert in the database
+        # Controller.general_insert(room_id=room_id, room_name=room_name, accessory_data= [
+        #     {
+        #         "id": accessory_id,
+        #         "type": accessory_type,
+        #         "status": defalut_status,
+        #         "name": name,
+        #         "cp": communication_protocol
+        #     }
+        # ])
+
         self.close()
 
 class PaddedItemDelegate(QStyledItemDelegate):
@@ -914,7 +1061,7 @@ class PaddedItemDelegate(QStyledItemDelegate):
         size = super().sizeHint(option, index)
         return QSize(size.width(), size.height() + 2 * self.padding)
 
-
+from PyQt5.QtCore import QTimer
 class CustomComboBox(QComboBox):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -940,12 +1087,23 @@ class CustomComboBox(QComboBox):
             QListView::item:hover {
                 background: none;  /* Removes the hover background */
                 border: none;      /* Removes any border on hover */
+                outline: none; 
             }
             QListView::item:selected {
                 background: none;  /* Removes the selection background */
                 border: none;      /* Removes any border on selection */
             }
+            QListView::item:focus { 
+                outline: none; 
+            }
+            QComboBox:focus {
+                outline: none; /* Ensure it's not shown on focus */
+                }
+            QComboBox QAbstractItemView {
+                outline: none; /* Remove the border from the dropdown list */
+            }
         """)
+        self.view().setFocusPolicy(Qt.NoFocus)
         self.setStyleSheet(Style.DIALOG_COMBO)
 
         # Set the custom delegate with padding
@@ -972,7 +1130,9 @@ class CustomComboBox(QComboBox):
 
     def eventFilter(self, obj, event):
         if obj == self.lineEdit() and event.type() in [QEvent.MouseButtonPress]:
-            self.showPopup()
+            QTimer.singleShot(100, self.showPopup)  # Add a small delay
+            # self.showPopup()
+            return True
         return super().eventFilter(obj, event)
 
     def showPopup(self):
@@ -990,153 +1150,87 @@ class CustomComboBox(QComboBox):
         super().showPopup()
 
 
-# class AddAccessoryDialog(DialogTemplate):
-#     def __init__(self, parent=None):
-#         super().__init__(parent, title='Add Accessory')
-
-#         accessory_type_label = QLabel('Accessory Type')
-#         self.accessory_type_combo = QComboBox()
-#         self.accessory_type_combo.setPlaceholderText("Select")
-
-#         room_label = QLabel('Room')
-#         self.room_combo = QComboBox()
-#         self.room_combo.setPlaceholderText("Select Room")
-
-#         name_label = QLabel('Name')
-#         self.name_entry = FocusableLineEdit()
-#         self.name_entry.setPlaceholderText("Name this accessory")
-
-#         id_label = QLabel('ID')
-#         self.id_entry = FocusableLineEdit()
-#         self.id_entry.setPlaceholderText("Enter accessory ID")
-
-#         cp_label = QLabel('Communication Protocol')
-#         self.cp_combo = QComboBox()
-
-#         form_container = QFrame()
-#         form_layout = QVBoxLayout(form_container)
-#         form_layout.setSpacing(0)
-#         form_container.setLayout(form_layout)
-#         form_container.setContentsMargins(0, 0, 0, 0)
-#         form_layout.setContentsMargins(0, 0, 0, 0)
-
-#         form_layout.addWidget(accessory_type_label)
-#         form_layout.addWidget(self.accessory_type_combo)
-#         form_layout.addWidget(room_label)
-#         form_layout.addWidget(self.room_combo)
-#         form_layout.addWidget(name_label)
-#         form_layout.addWidget(self.name_entry)
-#         form_layout.addWidget(id_label)
-#         form_layout.addWidget(self.id_entry)
-#         form_layout.addWidget(cp_label)
-#         form_layout.addWidget(self.cp_combo)
-
-#         self.apply_styles(name_label, self.name_entry)
-#         self.apply_styles(id_label, self.id_entry)
-
-#         # Applying custom styles to labels and combo boxes
-#         accessory_type_label.setStyleSheet(Style.DIALOG_LABEL)
-#         self.accessory_type_combo.setStyleSheet(Style.DIALOG_COMBO)
-#         room_label.setStyleSheet(Style.DIALOG_LABEL)
-#         self.room_combo.setStyleSheet(Style.DIALOG_COMBO)
-#         cp_label.setStyleSheet(Style.DIALOG_LABEL)
-#         self.cp_combo.setStyleSheet(Style.DIALOG_COMBO)
-
-#         self.scroll_layout.addWidget(form_container)
-
-#         self.postloads()
-
-#     def postloads(self):
-#         self.create_buttons()
-#         # self.name_entry.setFocus()
-
-#         if self.submit:
-#             self.save_button.clicked.connect(self.submit)
-
-#         self.connect_focus_events(self.findChildren(FocusableLineEdit))
-
-#     def submit(self):
-#         print(f"Accessory Type: {self.accessory_type_combo.currentText()}")
-#         print(f"Room: {self.room_combo.currentText()}")
-#         print(f"Name: {self.name_entry.text()}")
-#         print(f"ID: {self.id_entry.text()}")
-#         print(f"Communication Protocol: {self.cp_combo.currentText()}")
-#         self.close()
-
-
-########################################################### Example ################################
-# class DialogEample(DialogTemplate):
-#     def __init__(self, parent=None):
-#         super().__init__(parent, title='Add Room')
-
-#         name_label = QLabel('Name of the room 1:')
-#         self.name_entry = FocusableLineEdit()  # Use the custom FocusableLineEdit class
-
-#         form_layout = QHBoxLayout()  # Create a layout to hold the label and entry side by side
-#         form_layout.addWidget(name_label)
-#         form_layout.addWidget(self.name_entry)
-
-#         self.scroll_layout.addLayout(form_layout)
-#         self.apply_styles(name_label, self.name_entry)
-
-
-#         name_label1 = QLabel('Name of the room 2:')
-#         self.name_entry1 = FocusableLineEdit()  # Use the custom FocusableLineEdit class
-
-#         form_layout = QHBoxLayout()  # Create a layout to hold the label and entry side by side
-#         form_layout.addWidget(name_label1)
-#         form_layout.addWidget(self.name_entry1)
-
-#         self.scroll_layout.addLayout(form_layout)
         
-#         self.apply_styles(name_label1, self.name_entry1)
+class DeleteAccessoryDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__()
 
+        # self.setWindowTitle("Delete Accessory")
+        self.setWindowFlags(Qt.FramelessWindowHint )
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setStyleSheet("""
+                            background-color: #262626; 
+                            font-family: Poppins;
+                            font-size: 14px;
+                            font-weight: 500;
+                            border: none;
+                           """)
 
-#         name_label2 = QLabel('Name of the room 3:')
-#         self.name_entry2 = FocusableLineEdit()  # Use the custom FocusableLineEdit class
+        # Title Label
+        title = QLabel("Delete Accessory")
+        title.setStyleSheet("""
+                            color: white; 
+                            font-family: Poppins;
+                            font-size: 17px;
+                            font-weight: 400;
+                              """)
+        title.setAlignment(Qt.AlignCenter)
 
-#         form_layout = QHBoxLayout()  # Create a layout to hold the label and entry side by side
-#         form_layout.addWidget(name_label2)
-#         form_layout.addWidget(self.name_entry2)
+        # Message Label
+        message = QLabel("Are you sure you want to delete this accessory from your home?")
+        message.setStyleSheet("""
+                              color: white; 
+                              font-family: Poppins;
+                                font-size: 12px;
+                              font-weight: 400;
+                              margin-bottom:16px;
+                              """)
+        message.setAlignment(Qt.AlignCenter)
+        message.setWordWrap(True)
 
-#         self.scroll_layout.addLayout(form_layout)
-        
-#         self.apply_styles(name_label2, self.name_entry2)
+        # Layout for Buttons
+        button_layout = QHBoxLayout()
 
-        
-#         name_label3 = QLabel('Name of the room 4:')
-#         self.name_entry3 = FocusableLineEdit()  # Use the custom FocusableLineEdit class
+        # Cancel Button
+        cancel_button = QPushButton("Cancel")
+        cancel_button.setStyleSheet("""
+            color: #3a7ef5;
+            padding: 10px;
+            border-top: 0.5px solid rgba(128, 128, 128, 0.55);
+            border-right: 0.5px solid rgba(128, 128, 128, 0.55);
+            border-bottom-left-radius: 15px; 
+        """)
+        cancel_button.clicked.connect(self.reject)
 
-#         form_layout = QHBoxLayout()  # Create a layout to hold the label and entry side by side
-#         form_layout.addWidget(name_label3)
-#         form_layout.addWidget(self.name_entry3)
+        # Delete Button
+        delete_button = QPushButton("Delete")
+        delete_button.setStyleSheet("""
+            color: #e92868;
+            padding: 10px;
+            border-top: 0.5px solid rgba(128, 128, 128, 0.55);
+            border-bottom-right-radius: 15px;
+        """)
+        delete_button.clicked.connect(self.accept)
 
-#         self.scroll_layout.addLayout(form_layout)
-        
-#         self.apply_styles(name_label3, self.name_entry3)
+        # Add Buttons to Layout
+        button_layout.addWidget(cancel_button)
+        button_layout.addWidget(delete_button)
 
+        # Main Layout
+        layout = QVBoxLayout()
+        layout.addWidget(title)
+        layout.addWidget(message)
+        layout.addLayout(button_layout)
+        layout.setContentsMargins(0,19,0,0)
+        layout.setSpacing(0)
 
-#         name_label4 = QLabel('Name of the room 5:')
-#         self.name_entry4 = FocusableLineEdit()  # Use the custom FocusableLineEdit class
-
-#         form_layout = QHBoxLayout()  # Create a layout to hold the label and entry side by side
-#         form_layout.addWidget(name_label4)
-#         form_layout.addWidget(self.name_entry4)
-
-#         self.scroll_layout.addLayout(form_layout)
-        
-#         self.apply_styles(name_label4, self.name_entry4)
-
-
-#         self.create_buttons()
-#         self.name_entry.setFocus()
-        
-#         if self.submit:
-#             self.submit_button.clicked.connect(self.submit)
-
-#         self.connect_focus_events(self.findChildren(FocusableLineEdit))  # Connect focus events for input fields
-
-#     def submit(self):
-#         print(f"Room name 1 : {self.name_entry.text()}")
-#         print(f"Room name2 : {self.name_entry1.text()}")
-#         self.close()
+        self.setLayout(layout)
+        self.setFixedSize(270, 138)  # Adjust dialog size if needed
+    
+    def paintEvent(self, event):
+        # This ensures that the window is painted with rounded corners
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setBrush(QBrush(QColor(37, 37, 37, 255)))
+        painter.setPen(Qt.NoPen)
+        painter.drawRoundedRect(self.rect(), 15, 15)  # Radius for x and y

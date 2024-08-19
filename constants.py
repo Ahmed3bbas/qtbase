@@ -6,6 +6,8 @@ class Layout:
     COMBOBOX_ITEM_PADDING = 10
     COMBOBOX_MAX_NUM_OF_SHWON_ITEMS = 3
 
+    TKINTER_KEYBOARD_Y_SHIFT = 30
+
 # Styles
 class Style:
     ROOM_NAME = """
@@ -90,10 +92,10 @@ class Style:
                 padding: 12px, 16px, 12px, 16px;
                 border-radius: 5px; 
             }
-            QPushButton:hover {
-                background-color: #5c5c5c;
-            }
         """
+            # QPushButton:hover {
+            #     background-color: #5c5c5c;
+            # }
 
     MENU_STYLE = """
                 QMenu {
@@ -192,6 +194,8 @@ class Style:
         background-color: #2E3440; 
         color: white;
         border-radius: 10px;
+
+        
     """
 
     DIALOG_TITLE = """

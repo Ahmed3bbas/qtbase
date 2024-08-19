@@ -18,7 +18,7 @@ class Database:
  
     def __init__(self,host,port,username,password,database_name,unix_socket):
         self.host = host
-        self.port = port
+        # self.port = port
         self.username = username
         self.password = password
         self.database_name = database_name
@@ -40,7 +40,7 @@ class Database:
  
         except Error as e:
             print("Error while connecting to MySQL", e)
- 
+
     def is_connected(self):
         return self.connection.is_connected()
 
@@ -341,14 +341,7 @@ class Database:
     def delete_sensor(self, sensorid, type):
         try:
             cursor = self.connection.cursor()
-            print(sensorid)
-            print(type)
             sensorid = str(sensorid)
-            if type == 'glass_break':
-                type = "glass_sensor"
-
-            if type == 'temperature':
-                type = "temperature_sensor"
 
             # Delete from dashboard_items
             command = """DELETE FROM dashboard_items WHERE item_id = %s"""
@@ -359,7 +352,18 @@ class Database:
             cursor.execute(command, (sensorid,))
 
             # Delete from sensor data table
-            command = f"DELETE FROM {type} WHERE sensorid = %s"
+            type_map = {
+                'glass_sensor': 'glass_sensor',
+                'temperature_sensor': 'temperature_sensor',
+                'glass_break': 'glass_sensor',
+                'temperature': 'temperature_sensor',
+                'motion_sensor': 'motion_sensor',
+                'door_sensor': 'door_sensor',
+                'pollution_sensor': 'pollution_sensor',
+                'smoke_sensor': 'smoke_sensor'
+            }
+            sensor_type = type_map.get(type, type)
+            command = f"DELETE FROM {sensor_type} WHERE sensorid = %s"
             cursor.execute(command, (sensorid,))
 
             # Delete from sensors table
@@ -386,8 +390,16 @@ class Database:
             command = """DELETE FROM dashboard_actuators WHERE actuator_id = %s"""
             cursor.execute(command, (actuatorid,))
 
+            # Delete from actuator data table
+            type_map = {
+                'switch': 'relay_switch',
+                'relay_switch': 'relay_switch',
+                'siren': 'siren'
+            }
+
             # Delete from sensor data table
-            command = f"DELETE FROM {type} WHERE actuatorid = %s"
+            actuator_type = type_map.get(type, type)
+            command = f"DELETE FROM {actuator_type} WHERE actuatorid = %s"
             cursor.execute(command, (actuatorid,))
 
             # Delete from sensors table
@@ -398,6 +410,29 @@ class Database:
         except mysql.connector.Error as error:
             print("Failed to delete from MySQL table: {}".format(error))
             return error
+    
+    def delete_position_from_dashboard(self, item_id, dashboard_id):
+        """
+        Deletes the position of a sensor or actuator from the dashboard.
+        
+        :param item_id: ID of the sensor or actuator
+        :param dashboard_id: ID of the dashboard from which to remove the item
+        """
+        try:
+            cursor = self.connection.cursor()
+
+            # Delete from dashboard_items
+            command = """DELETE FROM dashboard_items WHERE item_id = %s AND dashboard_id = %s"""
+            cursor.execute(command, (item_id, dashboard_id))
+
+            # Commit changes
+            self.connection.commit()
+
+        except mysql.connector.Error as error:
+            print("Failed to delete position from MySQL table: {}".format(error))
+            return error
+        finally:
+            cursor.close()
 
     def get_actions(self, action_id):
         try:
@@ -951,8 +986,8 @@ END
             cursor = self.connection.cursor(dictionary=True)
             query = '''
                 SELECT 
-                    d.id AS dashboard_id, 
-                    d.name AS dashboard_name, 
+                    d.id AS room_id, 
+                    d.name AS room_name, 
                     u.id AS user_id, 
                     u.name AS user_name 
                 FROM 
@@ -974,57 +1009,62 @@ END
             cursor = self.connection.cursor(dictionary=True)
             query = '''
                 WITH LatestSiren AS (
-                    SELECT actuatorid, status, date_time,
-                        ROW_NUMBER() OVER (PARTITION BY actuatorid ORDER BY date_time DESC) AS rn
-                    FROM siren
-                    JOIN dashboard_actuators ON siren.actuatorid = dashboard_actuators.actuator_id
-                    WHERE dashboard_actuators.dashboard_id = %s
+                    SELECT s.actuatorid, s.status, s.date_time, a.name,
+                        ROW_NUMBER() OVER (PARTITION BY s.actuatorid ORDER BY s.date_time DESC) AS rn
+                    FROM siren s
+                    JOIN dashboard_actuators da ON s.actuatorid = da.actuator_id
+                    JOIN actuators a ON s.actuatorid = a.actuatorid
+                    WHERE da.dashboard_id = %s
                 ),
                 LatestRelaySwitch AS (
-                    SELECT actuatorid, status, date_time,
-                        ROW_NUMBER() OVER (PARTITION BY actuatorid ORDER BY date_time DESC) AS rn
-                    FROM relay_switch
-                    JOIN dashboard_actuators ON relay_switch.actuatorid = dashboard_actuators.actuator_id
-                    WHERE dashboard_actuators.dashboard_id = %s
+                    SELECT rs.actuatorid, rs.status, rs.date_time, a.name,
+                        ROW_NUMBER() OVER (PARTITION BY rs.actuatorid ORDER BY rs.date_time DESC) AS rn
+                    FROM relay_switch rs
+                    JOIN dashboard_actuators da ON rs.actuatorid = da.actuator_id
+                    JOIN actuators a ON rs.actuatorid = a.actuatorid
+                    WHERE da.dashboard_id = %s
                 ),
                 LatestMotionSensor AS (
-                    SELECT sensorid, motion_status, date_time,
-                        ROW_NUMBER() OVER (PARTITION BY sensorid ORDER BY date_time DESC) AS rn
-                    FROM motion_sensor
-                    JOIN dashboard_sensors ON motion_sensor.sensorid = dashboard_sensors.sensor_id
-                    WHERE dashboard_sensors.dashboard_id = %s
+                    SELECT ms.sensorid, ms.motion_status, ms.date_time, s.name,
+                        ROW_NUMBER() OVER (PARTITION BY ms.sensorid ORDER BY ms.date_time DESC) AS rn
+                    FROM motion_sensor ms
+                    JOIN dashboard_sensors ds ON ms.sensorid = ds.sensor_id
+                    JOIN sensors s ON ms.sensorid = s.sensorid
+                    WHERE ds.dashboard_id = %s
                 ),
                 LatestGlassSensor AS (
-                    SELECT sensorid, glass_status, date_time,
-                        ROW_NUMBER() OVER (PARTITION BY sensorid ORDER BY date_time DESC) AS rn
-                    FROM glass_sensor
-                    JOIN dashboard_sensors ON glass_sensor.sensorid = dashboard_sensors.sensor_id
-                    WHERE dashboard_sensors.dashboard_id = %s
+                    SELECT gs.sensorid, gs.glass_status, gs.date_time, s.name,
+                        ROW_NUMBER() OVER (PARTITION BY gs.sensorid ORDER BY gs.date_time DESC) AS rn
+                    FROM glass_sensor gs
+                    JOIN dashboard_sensors ds ON gs.sensorid = ds.sensor_id
+                    JOIN sensors s ON gs.sensorid = s.sensorid
+                    WHERE ds.dashboard_id = %s
                 ),
                 LatestDoorSensor AS (
-                    SELECT sensorid, door_status, date_time,
-                        ROW_NUMBER() OVER (PARTITION BY sensorid ORDER BY date_time DESC) AS rn
-                    FROM door_sensor
-                    JOIN dashboard_sensors ON door_sensor.sensorid = dashboard_sensors.sensor_id
-                    WHERE dashboard_sensors.dashboard_id = %s
+                    SELECT ds.sensorid, ds.door_status, ds.date_time, s.name,
+                        ROW_NUMBER() OVER (PARTITION BY ds.sensorid ORDER BY ds.date_time DESC) AS rn
+                    FROM door_sensor ds
+                    JOIN dashboard_sensors ds2 ON ds.sensorid = ds2.sensor_id
+                    JOIN sensors s ON ds.sensorid = s.sensorid
+                    WHERE ds2.dashboard_id = %s
                 )
-                SELECT 'siren' AS type, actuatorid AS id, status AS status, date_time
+                SELECT 'siren' AS type, actuatorid AS id, status AS status, date_time, name
                 FROM LatestSiren
                 WHERE rn = 1
                 UNION ALL
-                SELECT 'switch' AS type, actuatorid AS id, status AS status, date_time
+                SELECT 'switch' AS type, actuatorid AS id, status AS status, date_time, name
                 FROM LatestRelaySwitch
                 WHERE rn = 1
                 UNION ALL
-                SELECT 'motion_sensor' AS type, sensorid AS id, motion_status AS status, date_time
+                SELECT 'motion_sensor' AS type, sensorid AS id, motion_status AS status, date_time, name
                 FROM LatestMotionSensor
                 WHERE rn = 1
                 UNION ALL
-                SELECT 'glass_sensor' AS type, sensorid AS id, glass_status AS status, date_time
+                SELECT 'glass_sensor' AS type, sensorid AS id, glass_status AS status, date_time, name
                 FROM LatestGlassSensor
                 WHERE rn = 1
                 UNION ALL
-                SELECT 'door_sensor' AS type, sensorid AS id, door_status AS status, date_time
+                SELECT 'door_sensor' AS type, sensorid AS id, door_status AS status, date_time, name
                 FROM LatestDoorSensor
                 WHERE rn = 1;
             '''
@@ -1035,23 +1075,20 @@ END
         except mysql.connector.Error as error:
             print("Failed to fetch data from MySQL table: {}".format(error))
             return error
-
-
-
-        
+    
     def get_user_dashboards_and_status(self, user_id):
         try:
-            user_dashboards = []
-            dashboards = self.get_dashboard_by_user_id(user_id)
-            if isinstance(dashboards, Exception):
-                return dashboards
+            user_rooms = []
+            rooms = self.get_dashboard_by_user_id(user_id)
+            if isinstance(rooms, Exception):
+                return rooms
 
-            for dashboard in dashboards:
-                dashboard_id = dashboard['dashboard_id']
-                accessories_data = self.get_latest_status(dashboard_id)
+            for room in rooms:
+                room_id = room['room_id']
+                accessories_data = self.get_latest_status(room_id)
                 if isinstance(accessories_data, Exception):
                     return accessories_data
-                positions = self.get_positions(user_id, dashboard_id)
+                positions = self.get_positions(user_id, room_id)
                 if isinstance(positions, Exception):
                     return positions
 
@@ -1061,21 +1098,23 @@ END
                     accessories_with_positions.append({
                         'type': accessory['type'],
                         'id': accessory['id'],
+                        'name': accessory['name'],
                         'status': accessory['status'],
                         'date_time': accessory['date_time'],
                         'position': position["partitionId"] if position else None
                     })
 
-                user_dashboards.append({
-                    'dashboard': dashboard,
+                user_rooms.append({
+                    'room_data': room,
                     'accessories_data': accessories_with_positions
                 })
 
-            return user_dashboards
-        
+            return user_rooms
+            
         except mysql.connector.Error as error:
             print("Failed to fetch data from MySQL table: {}".format(error))
             return error
+
         
     def insert_position_into_dashboard(self, item, dashboard_id, user_id):
         try:
@@ -1121,12 +1160,12 @@ END
             return error
 
 
-
 def create_database_object():
     obj = Database(database_configuration['host'], database_configuration['port'], database_configuration['username'],
                    database_configuration['password'], database_configuration['database_name'] ,database_configuration['unix_socket'] )  # (host, 3306, "grafana", "pwd123", "grafanadb")
     obj.connect()
     return obj
+
 
 def actions_of_acuators_to_list(siren, switch, time):
     list_of_Actions = []
@@ -1325,6 +1364,8 @@ class Controller:
                 print(f"Item with ID {item_id} Item type ({item_type}) is missing in items_location list.")
 
         if 'username' in Controller.session.data:
+            # print(Controller.session.get('rooms_data'))
+            # print(Controller.session.get('items_status'))
             return {
                 'rooms_data': Controller.session.get('rooms_data'),
                 # 'events_and_actions': Controller.session.get('events_and_actions'),
@@ -1366,11 +1407,13 @@ class Controller:
         
     #     # print(Controller.session.get("items_status"))
     #     obj.disconnect()
-
-    def general_insert(self, user_id, dashboard_id, dashboard_name, accessory_data = []):
+    
+    @staticmethod
+    def general_insert(room_id, room_name, accessory_data = []):
         """
-        if accessory_data is empty that means you need to just insert new room
+            if accessory_data is empty that means you need to just insert new room
         """
+        user_id = Controller.session.get("user_id")
         obj = create_database_object()
         
         # Step 1: Validate user
@@ -1379,9 +1422,9 @@ class Controller:
             return "Invalid user"
 
         # Step 2: Check if the dashboard exists, if not, create it
-        dashboard_exists = obj.check_dashboard_exists(dashboard_id)
+        dashboard_exists = obj.check_dashboard_exists(room_id)
         if not dashboard_exists:
-            obj.insert_dashboard(dashboard_id, dashboard_name, user_id)
+            obj.insert_dashboard(room_id, room_name, user_id)
         
         # Step 3: Update the dashboard with sensors and actuators
         if len(accessory_data) != 0:
@@ -1400,7 +1443,7 @@ class Controller:
                     print(existing_sensor)
                     if not existing_sensor:
                         obj.insert_new_sensor(sensor_id, cp, sensor_type, name)
-                    obj.insert_sensors_to_dashboard(dashboard_id, sensor_id)
+                    obj.insert_sensors_to_dashboard(room_id, sensor_id)
 
                     # Insert the sensor reading
                     if sensor_type == 'door_sensor':
@@ -1419,7 +1462,7 @@ class Controller:
                     existing_actuator = obj.check_actuatorid(sensor_id)
                     if not existing_actuator:
                         obj.insert_new_actuator(sensor_id, cp, sensor_type, name)
-                    obj.insert_actuators_to_dashboard(dashboard_id, sensor_id)
+                    obj.insert_actuators_to_dashboard(room_id, sensor_id)
 
                     # Insert the actuator reading
                     if sensor_type == 'switch':
@@ -1431,7 +1474,7 @@ class Controller:
                     'itemId': sensor_id,
                     'type': sensor_type,
                     'partitionId': position
-                }, dashboard_id, user_id)
+                }, room_id, user_id)
         # Update session with latest status
         # items_status = Controller.session.get("items_status", [])
         # for accessory in accessory_data:
@@ -1446,6 +1489,43 @@ class Controller:
         obj.disconnect()
         return "Success"
 
+    @staticmethod
+    def general_delete(room_id, accessory_data=[]):
+        """
+        Deletes sensors and actuators from the database based on accessory_data.
+        If accessory_data is empty, no deletion occurs.
+        """
+        user_id = Controller.session.get("user_id")
+        obj = create_database_object()
+
+        # Step 1: Validate user
+        user_exists = obj.check_user_exists(user_id)
+        if not user_exists:
+            return "Invalid user"
+
+        # Step 2: Check if the dashboard exists
+        dashboard_exists = obj.check_dashboard_exists(room_id)
+        if not dashboard_exists:
+            return "Dashboard does not exist"
+
+        # Step 3: Delete sensors and actuators
+        for accessory in accessory_data:
+            accessory_id = int(accessory['id'])
+            accessory_type = accessory['type']
+
+            if accessory_type in ['door_sensor', 'motion_sensor', 'temperature', 'pollution', 'smoke', 'glass_sensor']:
+                # Delete the sensor
+                obj.delete_sensor(accessory_id, accessory_type)
+            elif accessory_type in ['switch', 'siren']:
+                # Delete the actuator
+                obj.delete_actuator(accessory_id, accessory_type)
+
+            # Remove position from dashboard
+            obj.delete_position_from_dashboard(accessory_id, room_id)
+
+        obj.disconnect()
+        return "Success"
+
     
     @staticmethod
     def update_session():
@@ -1454,19 +1534,21 @@ class Controller:
         obj.disconnect()
 
     @staticmethod
-    def check_item(type, id):
+    def check_item(item_type, item_id):
         is_exist = False
-        items = Controller.session.get("items_status")
-        if items and items != {}:
-            for t, i, s, d in Controller.session.get("items_status"):
-                if t == type and id == i:
-                    is_exist = True
-                    return is_exist
+        rooms_data = Controller.session.get("rooms_data")
+        if rooms_data:
+            for room in rooms_data:
+                for accessory in room.get('accessories_data'):
+                    if accessory['type'] == item_type and accessory['id'] == item_id:
+                        is_exist = True
+                        return is_exist
         return is_exist
+
     @staticmethod
     def check_item_totally(type, id, status):
         if Controller.check_item(type, id):
-            if status in items_configuration["Items Status"][type]:
+            if status in accessories_configuration["Items Status"][type]:
                 return True
         return False
             

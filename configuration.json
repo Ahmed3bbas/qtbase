@@ -18,7 +18,7 @@
         "humidity": [],
         "motion_sensor": ["Motion Detected", "No Motion"],
         "door_sensor": ["opened", "closed"],
-        "glass_break": ["broken", "intact"],
+        "glass_break": ["broken", "Normal"],
         "switch": ["on", "off"],
         "siren": ["on", "off"]
     },

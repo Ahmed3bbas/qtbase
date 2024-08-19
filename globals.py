@@ -9,11 +9,11 @@ with open(file_path, 'r') as json_file:
     configuration_data      = json.load(json_file)
     database_configuration  = configuration_data["Database"]
     mqtt_configuration      = configuration_data["MQTT"]
-    items_configuration       = configuration_data["Items"]
+    accessories_configuration       = configuration_data["Items"]
 
 # app.config['SECRET_KEY'] = 'your_secret_key_here'
 # app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=1)  # Set session duration (e.g., 7 days)
-sensor_types = list(items_configuration["Items Status"].keys())
+sensor_types = list(accessories_configuration["Items Status"].keys())
 
 # # is_first_load = True
 # # page_loaded = False

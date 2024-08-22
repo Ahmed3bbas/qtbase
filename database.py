@@ -2,6 +2,7 @@ from datetime import datetime
 
 import mysql.connector
 from mysql.connector import Error
+import sys
 # from PyQt5.QtCore import QThread
 from globals import *
 
@@ -18,7 +19,7 @@ class Database:
  
     def __init__(self,host,port,username,password,database_name,unix_socket):
         self.host = host
-        # self.port = port
+        self.port = port
         self.username = username
         self.password = password
         self.database_name = database_name
@@ -27,12 +28,20 @@ class Database:
  
     def connect(self):
         try:
-            self.connection = mysql.connector.connect(host=self.host,
-                                                 database=self.database_name,
-                                                 user=self.username,
-                                                 password=self.password,
-                                                 unix_socket=self.unix_socket
-                                                 )
+            if sys.platform == 'win32':
+                self.connection = mysql.connector.connect(host=self.host,
+                                                      database=self.database_name,
+                                                      user=self.username,
+                                                      password=self.password,
+                                                      port=self.port
+                                                      )
+            elif sys.platform == 'linux':
+                self.connection = mysql.connector.connect(host=self.host,
+                                                    database=self.database_name,
+                                                    user=self.username,
+                                                    password=self.password,
+                                                    unix_socket=self.unix_socket
+                                                    )
             if self.connection.is_connected():
                 db_Info = self.connection.get_server_info()
                 #print("Connected to MySQL Server version ", db_Info)
@@ -326,6 +335,7 @@ class Database:
             # data = []
             # Iterate over the rows and extract the required values
             data = [{'itemId': row[0], 'partitionId': row[1], 'type': row[2]} for row in result]
+            # print(data)
             # for row in result:
             #     item_id, partition_id, item_type = row
             #     data.append({
@@ -1161,8 +1171,12 @@ END
 
 
 def create_database_object():
-    obj = Database(database_configuration['host'], database_configuration['port'], database_configuration['username'],
-                   database_configuration['password'], database_configuration['database_name'] ,database_configuration['unix_socket'] )  # (host, 3306, "grafana", "pwd123", "grafanadb")
+    if sys.platform == 'win32':
+        obj = Database(database_configuration['host'], database_configuration['port'], database_configuration['username'],
+                   database_configuration['password'], database_configuration['database_name'], None) 
+    elif sys.platform == 'linux':
+        obj = Database(database_configuration['host'], database_configuration['port'], database_configuration['username'],
+                    database_configuration['password'], database_configuration['database_name'] ,database_configuration['unix_socket'] )  # (host, 3306, "grafana", "pwd123", "grafanadb")
     obj.connect()
     return obj
 
@@ -1255,6 +1269,7 @@ class Controller:
             print("The user not exist")
     
         obj = create_database_object()
+        # obj.delete_sensor(225, "glass_sensor")
         # obj.delete_actuator(4967, "relay_switch")
         # obj.delete_actuator(55, "siren")
         Controller.session.set('sensor_counts', self.get_data_from_dashboard(obj))
@@ -1413,6 +1428,7 @@ class Controller:
         """
             if accessory_data is empty that means you need to just insert new room
         """
+        INSERTION_STATUS = False
         user_id = Controller.session.get("user_id")
         obj = create_database_object()
         
@@ -1437,10 +1453,11 @@ class Controller:
                 current_time = datetime.now()
                 position = accessory.get('position', None)
 
-                if sensor_type in ['door_sensor', 'motion_sensor', 'temperature', 'polution', 'smoke']:
+                if sensor_type in ['door_sensor', 'motion_sensor', 'temperature', 'polution', 'smoke', 'glass_sensor']:
                     # Check if sensor exists
                     existing_sensor = obj.check_sensorid(sensor_id)
-                    print(existing_sensor)
+                    if GLOBAL_VERBOSE:
+                        print(existing_sensor)
                     if not existing_sensor:
                         obj.insert_new_sensor(sensor_id, cp, sensor_type, name)
                     obj.insert_sensors_to_dashboard(room_id, sensor_id)
@@ -1448,14 +1465,26 @@ class Controller:
                     # Insert the sensor reading
                     if sensor_type == 'door_sensor':
                         obj.insert_door_sensor_reading(sensor_id, status, current_time)
+                        INSERTION_STATUS = True
                     elif sensor_type == 'motion_sensor':
                         obj.insert_motion_sensor_reading(sensor_id, status, current_time)
+                        INSERTION_STATUS = True
                     elif sensor_type == 'temperature':
                         obj.insert_temperature_sensor_reading(sensor_id, status, status, current_time)
+                        INSERTION_STATUS = True
                     elif sensor_type == 'polution':
                         obj.insert_polution_sensor_reading(sensor_id, status, current_time)
+                        INSERTION_STATUS = True
                     elif sensor_type == 'smoke':
                         obj.insert_smoke_sensor_reading(sensor_id, status, current_time)
+                        INSERTION_STATUS = True
+                    elif sensor_type == 'glass_break' or sensor_type == 'glass_sensor':
+                        obj.insert_glass_sensor_reading(sensor_id, status, current_time)
+                        INSERTION_STATUS = True
+                    else:
+                        if GLOBAL_VERBOSE:
+                            print("I can't find this sensor in the database")
+                        INSERTION_STATUS = False
 
                 elif sensor_type in ['switch', 'siren']:
                     # Check if actuator exists
@@ -1467,14 +1496,21 @@ class Controller:
                     # Insert the actuator reading
                     if sensor_type == 'switch':
                         obj.insert_relay_switch_reading(sensor_id, status, current_time)
+                        INSERTION_STATUS = True
                     elif sensor_type == 'siren':
                         obj.insert_siren_reading(sensor_id, status, current_time)
+                        INSERTION_STATUS = True
+                    else:
+                        if GLOBAL_VERBOSE:
+                            print("I can't find this actuator in the database")
+                        INSERTION_STATUS = False
                 # Insert position
-                obj.insert_position_into_dashboard({
-                    'itemId': sensor_id,
-                    'type': sensor_type,
-                    'partitionId': position
-                }, room_id, user_id)
+                if INSERTION_STATUS:
+                    obj.insert_position_into_dashboard({
+                        'itemId': sensor_id,
+                        'type': sensor_type,
+                        'partitionId': position
+                    }, room_id, user_id)
         # Update session with latest status
         # items_status = Controller.session.get("items_status", [])
         # for accessory in accessory_data:

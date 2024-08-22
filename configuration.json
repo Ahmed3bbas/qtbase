@@ -18,14 +18,14 @@
         "humidity": [],
         "motion_sensor": ["Motion Detected", "No Motion"],
         "door_sensor": ["opened", "closed"],
-        "glass_break": ["broken", "Normal"],
+        "glass_sensor": ["Broken", "Normal"],
         "switch": ["on", "off"],
         "siren": ["on", "off"]
     },
     "Icon Paths": {
         "motion_sensor": {"Motion Detected": "Running Light.png", "No Motion": "Running Light.png"},
         "door_sensor": {"opened": "Opened Door Light", "closed": "Closed Door Light.png"},
-        "glass_break": {"broken": "Broken Glass Light.png", "Normal": "Window Light.png"},
+        "glass_sensor": {"Broken": "Broken Glass Light.png", "Normal": "Window Light.png"},
         "switch": {"on": "Lamp Light.png", "off": "Lamp Light.png"},
         "siren": {"on": "Siren Primary.png", "off": "Siren Light.png"}
     }

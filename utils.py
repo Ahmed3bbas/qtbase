@@ -284,10 +284,11 @@ class OptionsMenu(QWidget):
                                             text-align: left;
                                             border: none;
                                             background-color: #262626;
+                                            border-radius: 12px;
                                        }
                                         QPushButton 
                                         {
-                                        outline: none; /* Remove the dashed border */
+                                            outline: none; /* Remove the dashed border */
                                         }
                                         QPushButton:focus {
                                             outline: none; /* Ensure it's not shown on focus */
@@ -861,7 +862,7 @@ class AddRoomDialog(DialogTemplate):
 
             if not is_room_exist:
                 # Update the Database
-                # Controller.general_insert(room_id, room_name_text)
+                Controller.general_insert(room_id, room_name_text)
 
                 # Update the current session
                 rooms_data.append({'room_data': {'room_id': room_id, 
@@ -1052,15 +1053,15 @@ class AddAccessoryDialog(DialogTemplate):
         # print(self.parent().rooms_data)
         
         # Insert in the database
-        # Controller.general_insert(room_id=room_id, room_name=room_name, accessory_data= [
-        #     {
-        #         "id": accessory_id,
-        #         "type": accessory_type,
-        #         "status": defalut_status,
-        #         "name": name,
-        #         "cp": communication_protocol
-        #     }
-        # ])
+        Controller.general_insert(room_id=room_id, room_name=room_name, accessory_data= [
+            {
+                "id": accessory_id,
+                "type": accessory_type,
+                "status": defalut_status,
+                "name": name,
+                "cp": communication_protocol
+            }
+        ])
 
         self.close()
 

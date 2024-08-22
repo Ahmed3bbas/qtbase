@@ -41,6 +41,6 @@ insertion_event = threading.Event()
 
 
 # You can use to help you in debug show you useful infomation
-GLOBAL_VERBOSE = False
+GLOBAL_VERBOSE = True
 
 SHOW_ID_WITH_NAME = GLOBAL_VERBOSE

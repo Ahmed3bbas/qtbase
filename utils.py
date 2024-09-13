@@ -1,16 +1,21 @@
 from PyQt5.QtWidgets import QFrame, QGridLayout, QGroupBox, QLabel, QToolButton, QWidget, QShortcut, QApplication, QGraphicsScene, QGraphicsPixmapItem, QGraphicsView, QDialog
-from PyQt5.QtWidgets import QPushButton, QHBoxLayout, QVBoxLayout, QLabel, QScrollArea, QPushButton, QGraphicsBlurEffect, QLineEdit, QComboBox, QListView, QStyledItemDelegate, QLayout
-from PyQt5.QtCore import QSize, QRect, Qt, QCoreApplication,  pyqtSignal, QPoint, QRectF, QEvent
+from PyQt5.QtWidgets import QPushButton, QHBoxLayout, QVBoxLayout, QLabel, QScrollArea, QPushButton, QGraphicsBlurEffect, QLayout, QMessageBox
+from PyQt5.QtCore import QSize, QRect, Qt, QCoreApplication, QPoint, QRectF
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QBrush, QColor, QKeySequence, QRegion, QPainterPath
+
 from constants import Style, Layout
 from globals import accessories_configuration, GLOBAL_VERBOSE #self.scrollAreaWidgetContents_1
-from database import Controller
+from controller import Controller
 from functools import partial
-
+import re
+from custom_widgets import OverlayWidget, FocusableLineEdit, CustomComboBox
+################################################################################################################################################################################
+################# 
 class helpers:
     _translate = QCoreApplication.translate
     @staticmethod
     def add_accessory(main_container, room_layout: QGridLayout, accessory_type: str, id: int, name: str = None, status: str = None, row: int = 0, column: int = 0):
+        # print(name)
         # Validate parameters
         # if not isinstance(main_container, QWidget):
         #     raise TypeError("main_container must be an instance of QWidget")
@@ -18,17 +23,17 @@ class helpers:
             raise TypeError("room_layout must be an instance of QGridLayout")
         if not isinstance(accessory_type, str):
             raise TypeError("accessory_type must be a string")
-        if not isinstance(id, int):
-            raise TypeError("id must be an integer")
-        if name is not None and not isinstance(name, str):
+        if not isinstance(id, str):
+            raise TypeError("id must be a string")
+        if name is None or not isinstance(name, str):
             raise TypeError("name must be a string")
-        if status is not None and not isinstance(status, str):
+        if status is None or not isinstance(status, str):
             raise TypeError("status must be a string")
         if not isinstance(row, int) or row < 0:
             raise TypeError("row must be a positve integer")
         if not isinstance(column, int) or column < 0:
             raise TypeError("column must be a positve integer")
-
+        
         if accessory_type and accessory_type in list(accessories_configuration["Items Status"].keys()):
             _translate = QCoreApplication.translate
             is_active = helpers.is_active(accessory_type, status)
@@ -122,11 +127,6 @@ class helpers:
             room_layout.addWidget(accessory_group_box, row, column, 1, 1)
             return position
 
-    
-    # @staticmethod
-    # def find_accessory_items(gb_obj):
-    #     pass
-    
     @staticmethod
     def accessory_update_status(gb_obj, type, id, status, CALLBACK = None):
         
@@ -168,7 +168,6 @@ class helpers:
         if CALLBACK:
             CALLBACK(type, id, status)
 
-
     @staticmethod
     def get_type_and_id_of_accessory(obj):
         # Ensure obj has a valid objectName
@@ -186,14 +185,7 @@ class helpers:
         type = "_".join(obj_name[2:-1])  # Join parts from type_str
         id_str = obj_name[-1]  # The last part should be the id
 
-        # Convert id to an integer and handle errors
-        try:
-            id = int(id_str)
-        except ValueError:
-            id = None
-            print(f"Warning: Unable to convert '{id_str}' to an integer. Setting id to None.")
-        
-        return type, id
+        return type, id_str
 
     @staticmethod
     def find_accessory_data(data, type, id):
@@ -239,9 +231,9 @@ class helpers:
 
         if status in status_list:
             index = status_list.index(status)
-            if index == 0:
+            if index == 1:
                 return True
-            elif index == 1:
+            elif index == 0:
                 return False
 
         return None
@@ -267,7 +259,8 @@ class helpers:
         gridLayout.setObjectName("gridLayout_" + str(room_id))
         parent.verticalLayout_2.addLayout(gridLayout)
 
-
+################################################################################################################################################################################
+################# Popup for Accessories
 class OptionsMenu(QWidget):
     def __init__(self, parent=None, accessory_source = None):
         super().__init__(parent)
@@ -276,24 +269,7 @@ class OptionsMenu(QWidget):
         self.accessory_source = accessory_source
         
         self.main_widget = QWidget(self)
-        self.main_widget.setStyleSheet("""
-                                       QWidget{
-                                            Width:90px;
-                                            font-size: 14px;
-                                            font-weight: 400;
-                                            text-align: left;
-                                            border: none;
-                                            background-color: #262626;
-                                            border-radius: 12px;
-                                       }
-                                        QPushButton 
-                                        {
-                                            outline: none; /* Remove the dashed border */
-                                        }
-                                        QPushButton:focus {
-                                            outline: none; /* Ensure it's not shown on focus */
-                                       }
-                                       """)
+        self.main_widget.setStyleSheet(Style.OPTIONS_MENU)
     
         layout = QVBoxLayout(self.main_widget)
         layout.setContentsMargins(6, 6, 6, 6)
@@ -304,19 +280,7 @@ class OptionsMenu(QWidget):
         
         # Edit Button
         self.edit_button = QPushButton("Edit")
-        self.edit_button.setStyleSheet("""
-            QPushButton {
-                background-color: #262626; 
-                color: #ecf0f1; 
-                border: none; 
-                padding: 6px 10px; 
-                border-radius: 6px;  
-                margin-bottom:5px;
-            }
-            QPushButton:hover {
-                background-color: #5c5c5c;
-            }
-        """)
+        self.edit_button.setStyleSheet(Style.OPTIONS_MENU_EDIT_BTN)
         self.edit_button.setCursor(Qt.PointingHandCursor)
         self.edit_button.clicked.connect(self.on_edit)
         layout.addWidget(self.edit_button)
@@ -324,30 +288,13 @@ class OptionsMenu(QWidget):
         # Create dividers
         divider1 = QFrame()
         divider1.setFrameShape(QFrame.HLine)
-        divider_style = """
-        QFrame {
-            background-color: gray;
-            border-top: 1px solid;
-        }
-        """
-        divider1.setStyleSheet(divider_style)
+        
+        divider1.setStyleSheet(Style.DIVIDER)
         layout.addWidget(divider1)
         
         # Delete Button
         self.delete_button = QPushButton("Delete")
-        self.delete_button.setStyleSheet("""
-            QPushButton {
-                background-color: #262626; 
-                color: red; 
-                border: none; 
-                padding: 6px 10px;  
-                border-radius: 6px;
-                margin-top:5px;
-            }
-            QPushButton:hover {
-                background-color: #5c5c5c;
-            }
-        """)
+        self.delete_button.setStyleSheet(Style.OPTIONS_MENU_DELETE_BTN)
         self.delete_button.setCursor(Qt.PointingHandCursor)
         self.delete_button.clicked.connect(self.on_delete)
         layout.addWidget(self.delete_button)
@@ -396,20 +343,8 @@ class OptionsMenu(QWidget):
             print("[Error]: Could you pass the accessory source")
         self.hide()
 
-
-class OverlayWidget(QWidget):
-    def __init__(self, parent=None):
-        super(OverlayWidget, self).__init__(parent)
-        self.setAttribute(Qt.WA_TranslucentBackground)  # Transparent background
-        self.setStyleSheet("background: transparent;")  # Ensure background is transparent
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setBrush(QBrush(QColor(75, 75, 75, 200))) 
-        painter.setPen(Qt.NoPen)  # Ensure no border is drawn
-        painter.drawRect(self.rect())
-
-
+################################################################################################################################################################################
+################# 
 class BlurredOverlay(QWidget):
     def __init__(self, parent=None):
         super(BlurredOverlay, self).__init__(parent)
@@ -454,8 +389,6 @@ class BlurredOverlay(QWidget):
         self.overlay_widget.setGeometry(self.rect())
         self.overlay_widget.show()
     
-
-
     def mousePressEvent(self, event):
         if GLOBAL_VERBOSE:
             print("Overlay clicked")
@@ -484,15 +417,9 @@ class AddButtonOptions(QFrame):
         divider3 = QFrame()
         divider3.setFrameShape(QFrame.HLine)
 
-        divider_style = """
-        QFrame {
-            background-color: gray;
-            border-top: 1px solid;
-        }
-        """
-        divider1.setStyleSheet(divider_style)
-        divider2.setStyleSheet(divider_style)
-        divider3.setStyleSheet(divider_style)
+        divider1.setStyleSheet(Style.DIVIDER)
+        divider2.setStyleSheet(Style.DIVIDER)
+        divider3.setStyleSheet(Style.DIVIDER)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(5, 5, 5, 5)
@@ -589,19 +516,8 @@ class AddButtonOptions(QFrame):
             if hasattr(parent_window, 'clean_up_overlay') and not AddButtonOptions.will_you_open_another_dialog:
                 parent_window.clean_up_overlay()
 
-
-
-class FocusableLineEdit(QLineEdit):
-    focused = pyqtSignal(object)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def focusInEvent(self, event):
-        super().focusInEvent(event)
-        self.focused.emit(self)  # Emit the focused signal with the input field itself as an argument
-
-
+################################################################################################################################################################################
+################# Keyboard
 class VirtualKeyboard(QWidget):
     def __init__(self):
         super().__init__()
@@ -705,7 +621,8 @@ class VirtualKeyboard(QWidget):
         elif self.isVisible():
             self.hide()
 
-
+################################################################################################################################################################################
+################# Adding to Dashboard
 class DialogTemplate(QFrame):
     keyboard = None
 
@@ -812,7 +729,6 @@ class DialogTemplate(QFrame):
             field.focused.connect(self.keyboard.set_target_input)
 
 
-
 class AddRoomDialog(DialogTemplate):
     def __init__(self, parent=None):
         super().__init__(parent, title='Add Room')
@@ -848,58 +764,38 @@ class AddRoomDialog(DialogTemplate):
     def submit(self):
         # print(f"Room name 1 : {}")
         room_name_text = self.name_entry.text()
+
+        if re.match(r'^\d', room_name_text):
+            QMessageBox.warning(self, "Invalid Name", "The name cannot start with a number.")
+            return
+        if re.search(r'[^a-zA-Z0-9_ ]', room_name_text):
+            QMessageBox.warning(self, "Invalid Name", "The name cannot contain special characters.")
+            return
+
         rooms_data = Controller.session.get("rooms_data")
         is_room_exist = False # This Flag will check if the name exist in the database or not
-        ids = []
-        if rooms_data:
-            for room_data in rooms_data:
-                room = room_data["room_data"]
-                ids.append(room["room_id"])
-                if room["room_name"] == room_name_text:
-                    is_room_exist = True
+        for room_id in rooms_data:
+            room_data = rooms_data[room_id]
+            if room_data["room_name"] == room_name_text:
+                is_room_exist = True
         
-            room_id = max(max(ids) if len(ids) else 0, 0) + 1 # if the ids list is empty the room_id will be one otherwise the id will +1 maxiumum value of id
-
-            if not is_room_exist:
-                # Update the Database
-                Controller.general_insert(room_id, room_name_text)
-
-                # Update the current session
-                rooms_data.append({'room_data': {'room_id': room_id, 
-                                                 'room_name': room_name_text, 
-                                                 'user_id': Controller.session.get("user_id"), 
-                                                 'user_name': Controller.session.get("username")}, 
-                                   'accessories_data': []})
-                # print(rooms_data) 
-
+        if not is_room_exist:
+            # Update the Database
+            room = Controller.add_room(room_name_text)
+            if room.get("status", False):
                 # Update the GUI with the new Room
-                helpers.add_room(self.parent(), room_id, room_name_text)
+                helpers.add_room(self.parent(), room.get("room_id"), room_name_text)
             else:
-                print("Room existed...")
+                print(room.get("message"))
+        else:
+            print("Room existed...")
         
         # After finish close the dialog
         self.close()
 
 
-class CustomDelegate(QStyledItemDelegate):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def paint(self, painter, option, index):
-        # Add padding to the option's rect
-        option.rect.setTop(option.rect.top() + 1)
-        option.rect.setBottom(option.rect.bottom() - 1)
-        super().paint(painter, option, index)
-
-    def sizeHint(self, option, index):
-        size = super().sizeHint(option, index)
-        size.setHeight(size.height() + 2)  # Increase the height to add space
-        return size
-
-import re
-from PyQt5.QtWidgets import QMessageBox
 class AddAccessoryDialog(DialogTemplate):
-    def __init__(self, parent=None, accessory_ids = [],  rooms_info = [], accessories_types = []):
+    def __init__(self, parent=None, accessory_ids = [],  rooms_info = [], accessories_types = [], communication_protocols = []):
         super().__init__(parent, title='Add Accessory')
         self.ids = accessory_ids
 
@@ -918,7 +814,7 @@ class AddAccessoryDialog(DialogTemplate):
         self.id_entry.setPlaceholderText("Enter accessory ID")
 
         cp_label = QLabel('Communication Protocol')
-        self.cp_combo = self.create_custom_combo_box(["LoRa", "WiFi", "BLE"], "Select Protocol")
+        self.cp_combo = self.create_custom_combo_box(communication_protocols, "Select Protocol")
 
         form_container = QFrame()
         form_layout = QVBoxLayout(form_container)
@@ -950,23 +846,22 @@ class AddAccessoryDialog(DialogTemplate):
 
         self.postloads()
         
-
     def create_custom_combo_box(self, items, placeholder):
         combo = CustomComboBox()
         if items and len(items):
-            if isinstance(items[0], tuple):
+            if isinstance(items, set):
                 # Adding items to the combo box along with their associated IDs
                 for room_id, room_name in items:
                     combo.addItem(room_name, room_id)
                 combo.item_data = {name: id_ for id_, name in items}
             else:
                 combo.addItems(items)
+                # combo.addItem("test")
         combo.setCurrentIndex(-1) # it shoud be here (before placehlder to show the placeholder correctly)
         combo.setPlaceholderText(placeholder)
-        combo.setStyleSheet(Style.DIALOG_COMBO)
+        combo.setStyleSheet(Style.CUSTOM_COMBO_BOX + Style.DIALOG_COMBO)
 
         return combo
-
 
     def postloads(self):
         self.create_buttons()
@@ -1006,7 +901,7 @@ class AddAccessoryDialog(DialogTemplate):
         if re.match(r'^\d', name):
             QMessageBox.warning(self, "Invalid Name", "The name cannot start with a number.")
             return
-        if re.search(r'[^a-zA-Z0-9_]', name):
+        if re.search(r'[^a-zA-Z0-9_ ]', name):
             QMessageBox.warning(self, "Invalid Name", "The name cannot contain special characters.")
             return
 
@@ -1014,10 +909,10 @@ class AddAccessoryDialog(DialogTemplate):
         if not accessory_id:
             QMessageBox.warning(self, "Invalid ID", "Please enter a valid accessory ID.")
             return
-        if not accessory_id.isdigit():
-            QMessageBox.warning(self, "Invalid ID", "The ID must be a number.")
-            return
-        if int(accessory_id) in self.ids:
+        # if not accessory_id.isdigit():
+        #     QMessageBox.warning(self, "Invalid ID", "The ID must be a number.")
+        #     return
+        if accessory_id in self.ids:
             QMessageBox.warning(self, "Duplicate ID", "This ID already exists, try again with another ID.")
             return
         
@@ -1037,134 +932,42 @@ class AddAccessoryDialog(DialogTemplate):
         if accessory_type not in accessories_configuration["Items Status"]:
             QMessageBox.warning(self,"Configuration File", "Please fill the configuration file with this accessory.")
             return None
-        if len( accessories_configuration["Items Status"][accessory_type]) <= 1:
+        
+        if len( accessories_configuration["Items Status"][accessory_type]) < 1:
             QMessageBox.warning(self,"Configuration File", "Please fill the configuration file with status for this accessory.")
             return None
         
-        defalut_status = accessories_configuration["Items Status"][accessory_type][1]
-        accessory_id        = int(accessory_id)
-        
+        defalut_status = Controller.get_defalut_status(accessory_type)
+        # print(accessory_type, defalut_status)
+
         # Update Dashboard
         room_container = self.parent().findChild(QGridLayout, "gridLayout_" + str(room_id))
-        position = helpers.add_accessory(self.parent(), room_container, accessory_type, accessory_id, name, defalut_status)
-
+        position       = room_container.count()
+        
         # Update the session
-        self.parent().add_accessory_to_room_in_session(room_id, accessory_type, name, accessory_id, defalut_status, position)  # position should converted to str to be the same of database data type
+        # self.parent().add_accessory_to_room_in_session(room_id, accessory_type, name, accessory_id, defalut_status, position)  # position should converted to str to be the same of database data type
         # print(self.parent().rooms_data)
         
         # Insert in the database
-        Controller.general_insert(room_id=room_id, room_name=room_name, accessory_data= [
+        data = Controller.add_accessory(
             {
                 "id": accessory_id,
                 "type": accessory_type,
                 "status": defalut_status,
                 "name": name,
-                "cp": communication_protocol
-            }
-        ])
-
+                "cp": communication_protocol,
+                "position": position,
+                "room_name": room_name
+            })
+        if data.get("status", False):
+            position       = helpers.add_accessory(self.parent(), room_container, accessory_type, accessory_id, name, defalut_status)
+        else:
+            print(data)
+        # print(data)
         self.close()
 
-class PaddedItemDelegate(QStyledItemDelegate):
-    def __init__(self, padding=10, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.padding = padding
-
-    def sizeHint(self, option, index):
-        size = super().sizeHint(option, index)
-        return QSize(size.width(), size.height() + 2 * self.padding)
-
-from PyQt5.QtCore import QTimer
-class CustomComboBox(QComboBox):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.placeholder = ""
-        self.setEditable(True)
-        self.lineEdit().setReadOnly(True)
-        self.lineEdit().setAlignment(Qt.AlignCenter)
-        self.lineEdit().installEventFilter(self)
-
-        # Set a custom QListView for the dropdown
-        self.setView(QListView())
-        self.view().setSpacing(0)  # Remove spacing between items
-        
-        # Apply stylesheet for border-radius and centering
-        self.view().setStyleSheet("""
-            QListView {
-                border: 1px solid gray;
-                border-radius: 5px;
-                padding: 0px;
-                padding-left: 15px;
-                margin: 0px;
-            }
-            QListView::item:selected {
-                background: none;  /* Removes the selection background */
-                border: none;      /* Removes any border on selection */
-                outline: none; 
-            }
-            QListView::item:focus { 
-                outline: none; 
-            }
-            QComboBox:focus {
-                outline: none; /* Ensure it's not shown on focus */
-            }
-            QComboBox QAbstractItemView {
-                outline: none; /* Remove the border from the dropdown list */
-            }
-            QListView::item:hover {
-                background: none;  /* Removes the hover background */
-                border: none;      /* Removes any border on hover */
-                outline: none; 
-            }
-        """)
-        self.view().setFocusPolicy(Qt.NoFocus)
-        self.setStyleSheet(Style.DIALOG_COMBO)
-
-        # Set the custom delegate with padding
-        padding = Layout.COMBOBOX_ITEM_PADDING  # Define padding size
-        self.view().setItemDelegate(PaddedItemDelegate(padding))
-
-        # Set a maximum number of visible items
-        self.maxVisibleItems = Layout.COMBOBOX_MAX_NUM_OF_SHWON_ITEMS
-
-    def setPlaceholderText(self, placeholder):
-        self.placeholder = placeholder
-        self.update_placeholder()
-
-    def update_placeholder(self):
-        if self.currentIndex() == -1:  # No selection
-            self.lineEdit().setText(self.placeholder)
-        else:
-            self.lineEdit().setText(self.currentText())
-
-    def currentText(self):
-        if self.currentIndex() == -1:  # No selection
-            return ""
-        return super().currentText()
-
-    def eventFilter(self, obj, event):
-        if obj == self.lineEdit() and event.type() in [QEvent.MouseButtonPress]:
-            QTimer.singleShot(100, self.showPopup)  # Add a small delay
-            # self.showPopup()
-            return True
-        return super().eventFilter(obj, event)
-
-    def showPopup(self):
-        # Calculate the height of the popup
-        item_height = self.view().sizeHintForRow(0)
-        num_items = min(self.count(), self.maxVisibleItems)  # Limit number of visible items
-        popup_height = item_height * num_items  # Height for the popup based on visible items
-
-        # Set the fixed height for the popup
-        self.view().parent().setFixedHeight(popup_height)
-        
-        # Adjust scroll bar policy
-        self.view().setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff if num_items == self.count() else Qt.ScrollBarAsNeeded)
-
-        super().showPopup()
-
-
-        
+################################################################################################################################################################################
+################# Confirmation before deleting
 class DeleteAccessoryDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__()
@@ -1172,33 +975,16 @@ class DeleteAccessoryDialog(QDialog):
         # self.setWindowTitle("Delete Accessory")
         self.setWindowFlags(Qt.FramelessWindowHint )
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setStyleSheet("""
-                            background-color: #262626; 
-                            font-family: Poppins;
-                            font-size: 14px;
-                            font-weight: 500;
-                            border: none;
-                           """)
+        self.setStyleSheet(Style.DELETE_MESSAGE_DIALOG)
 
         # Title Label
         title = QLabel("Delete Accessory")
-        title.setStyleSheet("""
-                            color: white; 
-                            font-family: Poppins;
-                            font-size: 17px;
-                            font-weight: 400;
-                              """)
+        title.setStyleSheet(Style.DELETE_MESSAGE_TITLE)
         title.setAlignment(Qt.AlignCenter)
 
         # Message Label
         message = QLabel("Are you sure you want to delete this accessory from your home?")
-        message.setStyleSheet("""
-                              color: white; 
-                              font-family: Poppins;
-                                font-size: 12px;
-                              font-weight: 400;
-                              margin-bottom:16px;
-                              """)
+        message.setStyleSheet(Style.DELETE_MESSAGE_CONTENT)
         message.setAlignment(Qt.AlignCenter)
         message.setWordWrap(True)
 
@@ -1207,23 +993,12 @@ class DeleteAccessoryDialog(QDialog):
 
         # Cancel Button
         cancel_button = QPushButton("Cancel")
-        cancel_button.setStyleSheet("""
-            color: #3a7ef5;
-            padding: 10px;
-            border-top: 0.5px solid rgba(128, 128, 128, 0.55);
-            border-right: 0.5px solid rgba(128, 128, 128, 0.55);
-            border-bottom-left-radius: 15px; 
-        """)
+        cancel_button.setStyleSheet(Style.DELETE_MESSAGE_CANCEL_BTN)
         cancel_button.clicked.connect(self.reject)
 
         # Delete Button
         delete_button = QPushButton("Delete")
-        delete_button.setStyleSheet("""
-            color: #e92868;
-            padding: 10px;
-            border-top: 0.5px solid rgba(128, 128, 128, 0.55);
-            border-bottom-right-radius: 15px;
-        """)
+        delete_button.setStyleSheet(Style.DELETE_MESSAGE_DELETE_BTN)
         delete_button.clicked.connect(self.accept)
 
         # Add Buttons to Layout

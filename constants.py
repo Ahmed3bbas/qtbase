@@ -231,15 +231,13 @@ class Style:
 
     DIALOG_COMBO = """
             QComboBox {
-                border-radius: 10px;
                 background-color: #343434;
+                border-radius: 10px;
                 font-family: Poppins;
                 font-size: 14px;
                 font-weight: 500;
                 height: 38px;
                 border: none;
-                padding: 0 8px;
-                line-height: 21px;
 
             }
             QComboBox::drop-down {
@@ -260,15 +258,59 @@ class Style:
             }
             
             QComboBox QAbstractItemView {
-                padding: 10px 31px;
                 border: 1px solid #262626;
                 background-color: #262626;
                 color:white;
                 border-radius: 10px;
                 selection-background-color: #262626;
+                outline: none; /* Remove the border from the dropdown list */
             }
         """
+    
+    CUSTOM_COMBO_BOX = """
+            QListView {
+                border: 1px solid gray;
+                border-radius: 5px;
+                padding: 0px;
+                padding-left: 15px;
+                margin: 0px;
+            }
+            QListView::item:selected {
+                background: none;  /* Removes the selection background */
+                border: none;      /* Removes any border on selection */
+                outline: none; 
+            }
+            QListView::item:focus { 
+                outline: none; 
+            }
+            QComboBox:focus {
+                outline: none; /* Ensure it's not shown on focus */
+            }
+            QListView::item:hover {
+                background: none;  /* Removes the hover background */
+                border: none;      /* Removes any border on hover */
+                outline: none; 
+            }
+            
+            /* Scrollbar styling inside QListView */
+            QScrollBar:vertical {
+                border: none;
+                background-color: #343434;
+                width: 24px;
+                margin: 0px;
+                border-radius: 5px;
+            }
 
+            QScrollBar::handle:vertical {
+                background-color: #444444;
+                min-height: 30px;
+            }
+
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                background: none;
+            }
+        """
+    
     DIALOG_BUTTON = """
             padding: 6px 14px 6px 14px;
             background-color: #4b4b4b;
@@ -278,3 +320,95 @@ class Style:
             font-weight: 500;
             text-align: center;
             """
+    
+    DELETE_MESSAGE_DIALOG = """
+                            background-color: #262626; 
+                            font-family: Poppins;
+                            font-size: 14px;
+                            font-weight: 500;
+                            border: none;
+                           """
+    
+    DELETE_MESSAGE_TITLE = """
+                            color: white; 
+                            font-family: Poppins;
+                            font-size: 17px;
+                            font-weight: 400;
+                            """
+    
+    DELETE_MESSAGE_CONTENT = """
+                              color: white; 
+                              font-family: Poppins;
+                              font-size: 12px;
+                              font-weight: 400;
+                              margin-bottom:16px;
+                              """
+    
+    DELETE_MESSAGE_CANCEL_BTN = """
+                                color: #3a7ef5;
+                                padding: 10px;
+                                border-top: 0.5px solid rgba(128, 128, 128, 0.55);
+                                border-right: 0.5px solid rgba(128, 128, 128, 0.55);
+                                border-bottom-left-radius: 15px; 
+                                """
+    
+    DELETE_MESSAGE_DELETE_BTN = """
+                                color: #e92868;
+                                padding: 10px;
+                                border-top: 0.5px solid rgba(128, 128, 128, 0.55);
+                                border-bottom-right-radius: 15px;
+                            """
+    
+    OPTIONS_MENU = """
+                    QWidget{
+                        Width:90px;
+                        font-size: 14px;
+                        font-weight: 400;
+                        text-align: left;
+                        border: none;
+                        background-color: #262626;
+                        border-radius: 12px;
+                    }
+                    QPushButton 
+                    {
+                        outline: none; /* Remove the dashed border */
+                    }
+                    QPushButton:focus {
+                        outline: none; /* Ensure it's not shown on focus */
+                    }
+                """
+    
+    OPTIONS_MENU_EDIT_BTN = """
+            QPushButton {
+                background-color: #262626; 
+                color: #ecf0f1; 
+                border: none; 
+                padding: 6px 10px; 
+                border-radius: 6px;  
+                margin-bottom:5px;
+            }
+            QPushButton:hover {
+                background-color: #5c5c5c;
+            }
+        """
+    
+    DIVIDER = """
+        QFrame {
+            background-color: gray;
+            border-top: 1px solid;
+        }
+        """
+    
+    OPTIONS_MENU_DELETE_BTN = """
+            QPushButton {
+                background-color: #262626; 
+                color: red; 
+                border: none; 
+                padding: 6px 10px;  
+                border-radius: 6px;
+                margin-top:5px;
+            }
+            QPushButton:hover {
+                background-color: #5c5c5c;
+            }
+        """

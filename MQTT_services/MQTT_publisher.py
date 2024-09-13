@@ -1,6 +1,7 @@
 from PyQt5.QtCore import QThread
 from MQTT_services.MQTT import MQTT
-from database import create_database_object
+# from database import create_database_object
+from controller import Controller
 from globals import exit_event, GLOBAL_VERBOSE
 from custom_ui import Window
 import time
@@ -34,24 +35,41 @@ class MQTT_publisher(MQTT):
             print("[ERROR]: in send mqtt command")
 
     @staticmethod
-    def do_action(action_id, object):
-        actions = object.get_actions(action_id)
+    def do_action(automation_id):
+        automations = Controller.session.get("automations", None)
+        if automations:
+            for automation in automations:
+                if automation["id"] == automation_id:
+                    break
+            actions = automation.get("actions", None)
+        # actions = object.get_actions(action_id)
         list_of_actions = []
-        for i in actions.keys():
-            for value in actions[i]:
-                if i == 'time':
-                    sec, order = value
-                    list_of_actions.insert(order - 1, (i, sec))
-                else:
-                    id, status, order = value
-                    list_of_actions.insert(order - 1, (i, id, status))
+        for action in actions:
+            order = int(action["sequence"])
+            sec = action["duration"]
+            actuator_id = action["actuator_id"]
+            list_of_actions.insert(order - 1, (actuator_id, sec))
+        # for i in actions.keys():
+        #     for value in actions[i]:
+        #         if i == 'duration':
+        #             sec, order = value
+        #             list_of_actions.insert(order - 1, (i, sec))
+        #         else:
+        #             id, status, order = value
+        #             list_of_actions.insert(order - 1, (i, id, status))
 
         for tup in list_of_actions:
-            if tup[0] == 'siren' or tup[0] == 'switch':
-                data = {'type': tup[0], 'id': tup[1], 'value': tup[2]}
-                MQTT_publisher.handle_actuator_command(data)
-            else:
-                time.sleep(int(tup[1]))
+            # if tup[0] == 'siren' or tup[0] == 'switch':
+            actuator_id = tup[0]
+            duration    = int(tup[1])
+            detatils = Controller.get_accessory_details(actuator_id)
+            type     = detatils["type"]
+            data = {'type': type, 'id': actuator_id, 'value': "On"}
+            MQTT_publisher.handle_actuator_command(data)
+            
+            data = {'type': type, 'id': actuator_id, 'value': "Off"}
+            time.sleep(duration)
+            MQTT_publisher.handle_actuator_command(data)
     
     @staticmethod
     def publish_message(type, id, status):
@@ -68,24 +86,25 @@ class MQTTPublisherThread(QThread):
         self._stop_event = True
     
     def run(self):
+        user_id = Controller.session.get("user_id")
         if MQTT_publisher.main_window and MQTT_publisher.mqtt_client:
             if GLOBAL_VERBOSE:
                 print("MQTT Publisher is run successfully...")
             while True:
                 try:
-                    obj = create_database_object()
-                    rows = obj.get_push_alert()
-                    if rows:
-                        for row in rows:
-                            event_id, action_id = row
-                            self.do_action_thread(action_id)
-                            obj.delete_push_alert(action_id)
-                    obj.disconnect()
+                    # db_manager = create_database_object()
+                    alerts = Controller.get_alerts(user_id)
+                    # if len(alerts) > 0:
+                    for alert in alerts:
+                        automation_id = alert
+                        self.do_action_thread(automation_id)
+                        Controller.reset_alert(automation_id)
+                    # db_manager.disconnect()
                     time.sleep(1)
 
                 except Exception as e:
                     print("[ERROR]: in push alerts:", e)
-                    obj = create_database_object()
+                    # obj = create_database_object()
                 finally:
                     if exit_event.is_set():
                         if GLOBAL_VERBOSE:
@@ -97,9 +116,9 @@ class MQTTPublisherThread(QThread):
     def stop(self):
         self._stop_event = True
     
-    def do_action_thread(self, action_id):
+    def do_action_thread(self, automation_id):
         try:
-            MQTT_publisher.do_action(action_id, create_database_object())
+            MQTT_publisher.do_action(automation_id)
         except:
             print("[ERROR]: when do action is running...")
 
@@ -107,106 +126,6 @@ class MQTTPublisherThread(QThread):
     def publish_message(type, id, status):
         MQTT_publisher.publish_message(type, id, status)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-##########################################################################################################
-# import time
-# from MQTT_services.MQTT import MQTT
-# from database import create_database_object
-# import threading
-# import time
-# from globals import exit_event
-# from custom_ui import Window
-
-# class MQTT_publisher(MQTT):
-#     def __init__(self) -> None:
-#         pass
-    
-#     @staticmethod
-#     def handle_actuator_command(data):
-#         try:
-#             actuator_type = data['type']
-#             actuator_id = data['id']
-#             actuator_value = data['value']
-#             print(data)
-#             MQTT_publisher.mqtt_client.publish(f'micropolis/{actuator_type}/{actuator_id}', actuator_value)
-
-#             # update in GUI
-#             if Window and MQTT_publisher.main_window:
-#                 print("[INFO] update the GUI form the Publisher...")
-#                 Window.update_status_by_id(MQTT_publisher.main_window, actuator_type, actuator_id, actuator_value)
-#             else:
-#                 print("[ERROR]: there is no Window class or you are not intilaized window object")
-#         except:
-#             print("error in send mqtt command")
-
-#     @staticmethod
-#     def do_action(action_id, object):
-#         actions = object.get_actions(action_id)
-#         list_of_actions = []
-#         for i in actions.keys():
-#             for value in actions[i]:
-#                 if i == 'time':
-#                     sec, order = value
-#                     list_of_actions.insert(order - 1, (i, sec))
-#                 else:
-#                     id, status, order = value
-#                     list_of_actions.insert(order - 1, (i, id, status))
-
-#         for tup in list_of_actions:
-#             if tup[0] == 'siren' or tup[0] == 'switch':
-#                 data = {'type': tup[0], 'id': tup[1], 'value': tup[2]}
-#                 MQTT_publisher.handle_actuator_command(data)
-#             else:
-#                 time.sleep(int(tup[1]))
-
-#     @staticmethod
-#     def do_action_thread(action_id):
-#         # Perform the necessary action
-#         try:
-#             MQTT_publisher.do_action(action_id, create_database_object())
-#             # mqtt_client.publish('alarm_door')
-
-#         except:
-#             print("Error when do action is running...")
-
-    
-#     # Function to check for new rows periodically
-#     @staticmethod
-#     def check_push_alerts():
-#         while True:
-#             try:
-#                 obj = create_database_object()
-#                 rows = obj.get_push_alert()
-#                 if rows:
-#                     for row in rows:
-#                         event_id, action_id = row
-#                         t = threading.Thread(target=MQTT_publisher.do_action_thread, args=(action_id,))
-#                         t.start()
-#                         obj.delete_push_alert(action_id)
-#                 obj.disconnect()
-#                 time.sleep(1)
-
-#             except Exception as e:
-#                 print("Error in push alerts:", e)
-#                 obj = create_database_object()
-#             finally:
-#                 if exit_event.is_set():
-#                     print("MQTT publisher is disconnected and thread exiting.")
-#                     break
 
 
 

@@ -1,4 +1,8 @@
 __pycache__
 __pycache__/*
-
-
+MQTT_services/__pycache__
+MQTT_services/__pycache__/*
+Home_KIT_UI/__pycache__
+Home_KIT_UI/__pycache__/*
+MQTT_services/__pycache__/MQTT_publisher.cpython-39.pyc
+MQTT_services/__pycache__/MQTT_receiver.cpython-39.pyc

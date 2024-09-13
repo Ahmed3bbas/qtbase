@@ -6,19 +6,18 @@
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
-    QMainWindow, QShortcut, QStackedWidget, QPushButton, QMenu, QAction, QVBoxLayout, QScrollArea, QGraphicsBlurEffect, QWidget, QLabel, QLineEdit, QGridLayout, QHBoxLayout, QDialog
+    QMainWindow, QShortcut, QLabel, QGridLayout, QDialog
 )
 from PyQt5 import QtGui
-from PyQt5.QtGui import QKeySequence, QPainter, QBrush, QColor
+from PyQt5.QtGui import QKeySequence
 
 from Home_KIT_UI.home_kit_ui import Ui_MainWindow
-from PyQt5 import QtWidgets, QtCore
-from PyQt5.QtCore import pyqtSignal, QObject, Qt, QPoint
-from constants import *
-from globals import exit_event, insertion_event, accessories_configuration, session, GLOBAL_VERBOSE, SHOW_ID_WITH_NAME, sensor_types
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import pyqtSignal, Qt, QPoint
+from constants import Layout
+from globals import exit_event, session, GLOBAL_VERBOSE, SHOW_ID_WITH_NAME, acuators
 from utils import helpers, OptionsMenu, BlurredOverlay, AddButtonOptions, AddRoomDialog, AddAccessoryDialog, DeleteAccessoryDialog
-from database import Controller
-import datetime
+from controller import Controller
 from PyQt5.QtWidgets import QScroller
 
 class Window(QMainWindow, Ui_MainWindow):
@@ -26,11 +25,11 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def __init__(self, parent=None, handler = None):
         # Constents
-        self.acuators = ["switch", "siren"]
+        self.acuators = acuators
         
         # This is a MQTT function to call when stop your APP to terminate threads of MQTT When close the app
         self.thread_terminaiton_handler = None
-        self.handler = handler
+        self.mqtt_publish_handler = handler
 
         # GUI Manage Dialogs
         self.dialog = None
@@ -46,53 +45,63 @@ class Window(QMainWindow, Ui_MainWindow):
 
         # connect to database
         self.controller = Controller(session=session)
-        
-        data = self.controller.start()
-        self.rooms_data = data["rooms_data"]
-        # print(self.rooms_data)
-        self.create_dashboard()
-        # # self.actions = data['actions']
-        # self.items_data = data['items_data']
-        
 
+        # Added for testing it will removed in production
+        with Controller.with_db_connection() as db_manager:
+            if db_manager.get_users():
+                # Don't create user
+                pass
+            else:
+                db_manager.add_user('john_doe', 'securepassword', 'Admin')
+                print("user created successfuly")
+
+        # connect with database at begining and get the data of the user
+        self.controller.start()
+
+        # After getting data create dashboard
+        self.create_dashboard()
+        
         # Set icon, name of the applicaiton, and set the shortcuts
         # connect the function of add_button
         # Rearrange the items of the dashboard
         self.postloads()
-    
-      
+       
     def create_dashboard(self):
-
-        for room in self.rooms_data:
-            room_data = room.get("room_data", None)
-            room_id = room_data.get('room_id')
-            room_text = room_data.get("room_name", "unkown room name")
+        room_data = Controller.session.get("rooms_data", None)
+        for room_id in room_data:
+            room = room_data[room_id]
+            room_text = room.get("room_name", "unkown room name")
+            accessories_data = room.get("accessories", None)
 
             helpers.add_room(self, room_id, room_text)
 
             # Room Accessories
-            accessories_data = room.get("accessories_data", None)
+            # room_accessories_data = [acc for acc in accessories_data if acc["room_id"] == room_id]# room.get("accessories_data", None)
             # print(len(accessories_data))
             self.additems(room_id, accessories_data) # accessories_data[:1] if len(accessories_data) else None
-
 
     def additems(self, room_id, accessories_data):
         if accessories_data == None or accessories_data == []:
             return None
 
         for item in accessories_data:
-            pos = item.get('position', None)
-            if pos:
+            # print(item)
+            pos = item.get('accessory_position', None)
+            if pos is not None or pos >= 0:
                 num = int(pos) 
             else: 
                 num = -1
             
             row = num // Layout.MAX_COLS
             col = num - (row * Layout.MAX_COLS)
-            type = item['type']
-            id = item['id']
-            status = item["status"]
-            name   = item.get("name", "UNKOWN")
+            # print(row, col)
+            type = item['accessory_type']
+            id = item['accessory_id']
+            status = item["current_status"]
+            if status is None:
+                status = Controller.get_defalut_status(type)
+    
+            name   = item.get("accessory_name", "UNKOWN")
             name   = name if name else "UNKOWN"
             try: 
                 room_container = self.findChild(QGridLayout, "gridLayout_" + str(room_id))
@@ -100,7 +109,6 @@ class Window(QMainWindow, Ui_MainWindow):
                 helpers.add_accessory(self, room_container, type, id, name if not SHOW_ID_WITH_NAME else name + str(id), status, row, col)
             except Exception as e:
                 print(f"type: {type} id: {id} pos: {pos} error: {e}")
-
 
     def update_status_by_id(self, type, id, status):
         """
@@ -114,7 +122,7 @@ class Window(QMainWindow, Ui_MainWindow):
             accessory_status = gb_bx.findChild(QLabel, "accessory_status_" + type + "_" + id_str)
             # the status is the same of the current status
             if accessory_status.text() != status:
-                helpers.accessory_update_status(gb_bx, type, id, status, CALLBACK=self.update_accessory_data_in_session)
+                helpers.accessory_update_status(gb_bx, type, id, status) # , CALLBACK=self.update_accessory_data_in_session)
         return None
 
     def accessory_toggle_handler(self, clicked_object):
@@ -123,68 +131,36 @@ class Window(QMainWindow, Ui_MainWindow):
             clicked_object = clicked_object.parent()
 
         type, id = helpers.get_type_and_id_of_accessory(clicked_object) # clicked_obj.parent()
+        rooms_data = Controller.session.get("rooms_data", None)
+        # print(rooms_data)
         if type in self.acuators:
-            accessory_all_data = helpers.find_accessory_data(self.rooms_data, type, id)
-            room_data, accessory_data = accessory_all_data.get("room_data", None), accessory_all_data.get("accessory_data", None)
-            status  = accessory_data['status']
-            type    = accessory_data['type']
+            for room_id in rooms_data:
+                accessories_data = rooms_data[room_id]["accessories"]
+                accessory_data = [acc for acc in accessories_data if acc["accessory_id"] == id] # helpers.find_accessory_data(self.accessories_data, type, id)
+                if accessory_data:
+                    accessory_data = accessory_data[0]
+                    status  = accessory_data['current_status']
+                    type    = accessory_data['accessory_type']
+                    break
+            # print(accessory_data)
 
-            if status == "on":
-                new_staus = "off"
-            elif status == "off":
-                new_staus = "on"
+            if status == "On":
+                new_staus = "Off"
+            elif status == "Off":
+                new_staus = "On"
             else:
                 return None # stop wrong status
 
             # update GUI and the CALLBACK for update the current copy of data's database
-            helpers.accessory_update_status(clicked_object, type, id, new_staus, CALLBACK=self.update_accessory_data_in_session)
-            if self.handler:
-                self.handler(type, id, new_staus)
+            helpers.accessory_update_status(clicked_object, type, id, new_staus)#, CALLBACK=self.update_accessory_data_in_session)
+            
+            if self.mqtt_publish_handler:
+                self.mqtt_publish_handler(type, id, new_staus)
             else:
                 print("[Warning]: Can't publish your message...")
-            # TODO
-            # update database
         else:
             if GLOBAL_VERBOSE:
                 print("[Warning]: This is not an acuator item")
-
-    def update_accessory_data_in_session(self, type, id, new_status, VERBOSE = GLOBAL_VERBOSE):
-        for room in self.rooms_data:
-            accessories_data = room.get("accessories_data", None) 
-
-            if accessories_data is not None:
-                for accessory_data in accessories_data:
-                    dtype = accessory_data.get('type')
-                    did = accessory_data.get('id')
-
-                    if dtype == type and did == id:
-                        accessory_data['status'] = new_status
-                        if VERBOSE:
-                            print(f"Updated {type} with ID {id} to new status: {new_status}")
-                        return True  # Return True if update is successful
-        return False  # Return False if no update was made
-    
-    def add_accessory_to_room_in_session(self, room_id, accessory_type, name, accessory_id, status, position):
-        # New accessory data to add
-        new_accessory = {
-            'type': accessory_type,
-            'id': accessory_id,
-            'name': name,
-            'status': status,
-            'date_time': datetime.datetime.now(),
-            'position': position
-        }
-
-        # Iterate over rooms to find the correct room by room_id
-        for room in self.rooms_data:
-            room_data = room.get('room_data', {})
-            if room_data.get('room_id') == room_id:
-                # Append the new accessory to the accessories_data list
-                room.setdefault('accessories_data', []).append(new_accessory)
-                break
-        else:
-            # Room ID not found, you can handle this case as needed
-            print(f"Room ID {room_id} not found in rooms_data.")
     
     def add_overlay_menu(self):
         button_position = self.add_button.mapToGlobal(QPoint(0, 0))
@@ -234,18 +210,22 @@ class Window(QMainWindow, Ui_MainWindow):
     def delete_widget(self, widget):
         dialog = DeleteAccessoryDialog()
         if dialog.exec_() == QDialog.Accepted:
-            # Update the dashboard
-            widget.setParent(None)  # Remove widget from layout and delete it
-            widget.deleteLater()
-            self.populate_grid() # Rearrange items
+            
 
             # update the database
+            # +Update session
+            type, id = helpers.get_type_and_id_of_accessory(widget)
+            delete_data = Controller.delete_accessory(accessory_id = id)
+            if delete_data.get("status", False):
+                # Update the dashboard
+                widget.deleteLater()
+                widget.setParent(None)  # Remove widget from layout and delete it
 
-            # Update session
-
+                self.populate_grid() # Rearrange items
+            else:
+                print(delete_data)
             # clode Dialog
             dialog.close()
-
         
     def open_add_room_dialog(self):
         if self.dialog:
@@ -271,25 +251,24 @@ class Window(QMainWindow, Ui_MainWindow):
         self.dialog.activateWindow()
 
     def open_add_accessory_dialog(self):
-        rooms_info = []
-        accessory_ids = []
-       
-        for room in self.rooms_data:
-            room_data = room['room_data']
-            room_id = room_data['room_id']
-            room_name = room_data['room_name']
-            rooms_info.append((room_id, room_name))
-
-            accessories = room.get('accessories_data', [])
+        rooms_info = set()
+        accessory_ids = set()
+        rooms_data =  Controller.session.get("rooms_data", None)
+        for room_id in rooms_data:
+            room = rooms_data[room_id]
+            room_name = room['room_name']
+            rooms_info.add((room_id, room_name))
+            accessories = room.get("accessories", None)
+            
             for accessory in accessories:
-                accessory_id = accessory.get('id')
+                accessory_id = accessory.get('accessory_id')
                 if accessory_id is not None:
-                    accessory_ids.append(accessory_id)
+                    accessory_ids.add(accessory_id)
 
         if self.dialog:
             self.dialog.close()
         
-        self.dialog = AddAccessoryDialog(self, accessory_ids, rooms_info = rooms_info, accessories_types = sensor_types)
+        self.dialog = AddAccessoryDialog(self, accessory_ids, rooms_info = rooms_info, accessories_types = Controller.session.get("accessories_types", None), communication_protocols = Controller.session.get("communication_protocols", None))
         w = int(self.width() - (self.width() * 2 // 3))
         h = int(self.height() * 2.3 // 3)
         x = int(self.x() + ( self.width() - w ) // 2)
@@ -314,11 +293,13 @@ class Window(QMainWindow, Ui_MainWindow):
  
     def populate_grid(self):
         cols = self.calculate_columns()
+        # delay_in_msec = 10
         for layout in self.findChildren(QGridLayout):
             # layout.setSpacing(16)
 
             # 1- Get Items in the layout
             items = self.get_grid_elements(layout)
+            # print(items)
             # print(layout, items)
 
             # 2- Clear the layout from any item
@@ -329,7 +310,6 @@ class Window(QMainWindow, Ui_MainWindow):
                 row = i // cols
                 col = i % cols
                 layout.addWidget(element, row, col)
-                # print(layout.objectName(), row, col, element.objectName())
 
     def calculate_columns(self):
         # Adjust the number of columns based on the window width
@@ -356,19 +336,33 @@ class Window(QMainWindow, Ui_MainWindow):
                 #     print(row, col)
         return elements
     
+    # def clear_grid_layout(self, grid_layout):
+    #     while grid_layout.count():
+    #         item = grid_layout.takeAt(0)
+    #         widget = item.widget()
+    #         if widget is not None:
+    #             widget.deleteLater()  # Safely deletes the widget
+    #             widget.setParent(None)
+    #         else:
+    #             # If the item is a layout, recursively clear it
+    #             sub_layout = item.layout()
+    #             if sub_layout is not None:
+    #                 self.clear_grid_layout(sub_layout)
+    #         grid_layout.removeItem(item)   
+
     def clear_grid_layout(self, grid_layout):
+        # Safely removes widgets without deleting them (so they can be reused)
         while grid_layout.count():
             item = grid_layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
-                widget.deleteLater()  # Safely deletes the widget
-                widget.setParent(None)
+                grid_layout.removeWidget(widget)
+                widget.setParent(None)  # Detach widget from its parent to remove it from the layout
             else:
                 # If the item is a layout, recursively clear it
                 sub_layout = item.layout()
                 if sub_layout is not None:
                     self.clear_grid_layout(sub_layout)
-            grid_layout.removeItem(item)   
 
     def preloads(self):
         font_paths = [

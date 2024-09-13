@@ -4,7 +4,7 @@
       "port": 3306,
       "username": "root",
       "password": "1234",
-      "database_name": "grafanadb",
+      "database_name": "home_kit",
       "unix_socket" : "/var/lib/mysql/mysql.sock"
   },
   "MQTT": {
@@ -14,21 +14,22 @@
   },
   "Items": {
     "Items Status": {
-        "temperature": [],
-        "humidity": [],
-        "motion_sensor": ["Motion Detected", "No Motion"],
-        "door_sensor": ["opened", "closed"],
-        "glass_sensor": ["Broken", "Normal"],
-        "switch": ["on", "off"],
-        "siren": ["on", "off"]
-    },
+        "temperature sensor": ["FLOAT"],
+        "humidity sensor": ["FLOAT"],
+        "motion sensor": ["No Motion", "Motion Detected"],
+        "door sensor": ["Closed", "Opened"],
+        "glass break sensor": ["Normal", "Broken"],
+        "lamp": ["Off", "On"],
+        "siren": ["Off", "On"]
+   },
     "Icon Paths": {
-        "motion_sensor": {"Motion Detected": "Running Light.png", "No Motion": "Running Light.png"},
-        "door_sensor": {"opened": "Opened Door Light", "closed": "Closed Door Light.png"},
-        "glass_sensor": {"Broken": "Broken Glass Light.png", "Normal": "Window Light.png"},
-        "switch": {"on": "Lamp Light.png", "off": "Lamp Light.png"},
-        "siren": {"on": "Siren Primary.png", "off": "Siren Light.png"}
-    }
+        "motion sensor": {"Motion Detected": "Running Light.png", "No Motion": "Running Light.png", "Default": "Running Light.png"},
+        "door sensor": {"Opened": "Opened Door Light", "Closed": "Closed Door Light.png", "Default": "Closed Door Light.png"},
+        "glass break sensor": {"Broken": "Broken Glass Light.png", "Normal": "Window Light.png"}, "Default": "Window Light.png",
+        "lamp": {"On": "Lamp Light.png", "Off": "Lamp Light.png", "Default": "Lamp Light.png"},
+        "siren": {"On": "Siren Primary.png", "Off": "Siren Light.png", "Default": "Siren Light.png"}
+    },
+    "Acuators": ["lamp", "siren"]
   }
   
 }
